@@ -7,6 +7,7 @@ from app.database import get_session
 from app.models.user import User
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.restaurant import Restaurant
+from app.models.delivery import DeliveryProfile, DeliveryAssignment
 from app.models.enums import OrderStatus, UserRole
 from app.models.common import utc_now, utc_isoformat
 from app.services.auth_service import require_role
@@ -15,6 +16,50 @@ from app.algorithms.kitchen_priority import sort_kitchen_queue
 from app.services.geo_service import assign_nearest_available_partner
 
 router = APIRouter(prefix="/api/kitchen", tags=["Kitchen Display System"])
+
+@router.get("/delivery-partners")
+def get_kitchen_delivery_partners(
+    current_user: User = Depends(require_role([
+        UserRole.KITCHEN_STAFF,
+        UserRole.RESTAURANT_ADMIN,
+        UserRole.SUPER_ADMIN,
+    ])),
+    session: Session = Depends(get_session)
+):
+    """
+    Returns available delivery partners so kitchen staff can choose
+    which rider to hand over ready orders to.
+    """
+    partners = session.exec(
+        select(User).where(User.role == UserRole.DELIVERY_PARTNER, User.is_active == True)
+    ).all()
+
+    results = []
+    for p in partners:
+        profile = session.exec(select(DeliveryProfile).where(DeliveryProfile.user_id == p.id)).first()
+        active_orders = session.exec(
+            select(Order).where(
+                Order.delivery_partner_id == p.id,
+                col(Order.status).in_([
+                    OrderStatus.CONFIRMED,
+                    OrderStatus.PREPARING,
+                    OrderStatus.READY,
+                    OrderStatus.OUT_FOR_DELIVERY,
+                ])
+            )
+        ).all()
+        results.append({
+            "id": p.id,
+            "full_name": p.full_name,
+            "email": p.email,
+            "phone": p.phone or "N/A",
+            "vehicle_type": profile.vehicle_type if profile else "Motorcycle",
+            "vehicle_number": profile.vehicle_number if profile else "N/A",
+            "is_available": profile.is_available if profile else True,
+            "rating": profile.rating if profile else 4.8,
+            "active_orders_count": len(active_orders)
+        })
+    return results
 
 @router.get("/queue")
 def get_kitchen_queue(
@@ -62,11 +107,14 @@ def get_kitchen_queue(
     for entry in ranked_list:
         o = entry["order"]
         items = session.exec(select(OrderItem).where(OrderItem.order_id == o.id)).all()
+        dp_user = session.get(User, o.delivery_partner_id) if o.delivery_partner_id else None
         
         formatted_queue.append({
             "order_id": o.id,
             "order_number": o.order_number,
             "status": o.status.value,
+            "delivery_partner_id": o.delivery_partner_id,
+            "delivery_partner_name": dp_user.full_name if dp_user else None,
             "priority_score": entry["priority_score"],
             "urgency": entry["urgency"],
             "badge_color": entry["badge_color"],
@@ -92,6 +140,7 @@ def get_kitchen_queue(
 async def update_kitchen_order_status(
     order_id: int,
     action: str,
+    delivery_partner_id: Optional[int] = None,
     current_user: User = Depends(require_role([
         UserRole.KITCHEN_STAFF,
         UserRole.RESTAURANT_ADMIN,
@@ -125,8 +174,15 @@ async def update_kitchen_order_status(
             detail=f"Cannot apply '{action}' while order is {order.status.value}",
         )
 
+    # Validate custom chosen delivery partner if provided by kitchen staff
+    if delivery_partner_id is not None:
+        partner_user = session.get(User, delivery_partner_id)
+        if not partner_user or partner_user.role != UserRole.DELIVERY_PARTNER or not partner_user.is_active:
+            raise HTTPException(status_code=400, detail="Invalid delivery partner selected")
+        order.delivery_partner_id = delivery_partner_id
+
     # Confirmation through the kitchen dashboard must use the same dispatch
-    # policy as the general order status endpoint.
+    # policy as the general order status endpoint if no partner is assigned yet.
     if action.lower() == "accept" and not order.delivery_partner_id:
         restaurant = session.get(Restaurant, order.restaurant_id)
         if restaurant:
@@ -145,6 +201,23 @@ async def update_kitchen_order_status(
             raise HTTPException(status_code=409, detail="No available delivery partner for this order")
         order.delivery_partner_id = partner.id
 
+    # When handing over to delivery partner, track the delivery assignment
+    if target_status == OrderStatus.OUT_FOR_DELIVERY and order.delivery_partner_id:
+        assignment = session.exec(select(DeliveryAssignment).where(DeliveryAssignment.order_id == order.id)).first()
+        if not assignment:
+            assignment = DeliveryAssignment(
+                order_id=order.id,
+                delivery_partner_id=order.delivery_partner_id,
+                assigned_at=utc_now(),
+                picked_up_at=utc_now()
+            )
+            session.add(assignment)
+        else:
+            assignment.delivery_partner_id = order.delivery_partner_id
+            if not assignment.picked_up_at:
+                assignment.picked_up_at = utc_now()
+            session.add(assignment)
+
     order.status = target_status
     order.updated_at = utc_now()
     session.add(order)
@@ -152,7 +225,7 @@ async def update_kitchen_order_status(
     history = OrderStatusHistory(
         order_id=order_id,
         status=target_status,
-        notes=f"Kitchen updated order to {target_status.value}",
+        notes=f"Kitchen updated order to {target_status.value} (Handed over to Rider #{order.delivery_partner_id})",
         changed_by_role=current_user.role.value,
         timestamp=utc_now()
     )

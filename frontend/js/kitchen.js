@@ -3,6 +3,7 @@ const KitchenDisplay = {
   loading: false,
   refreshTimer: null,
   clockTimer: null,
+  deliveryPartners: [],
 
   init() {
     if (!Auth.checkAuthGuard(["kitchen_staff", "restaurant_admin", "super_admin"])) return;
@@ -27,8 +28,17 @@ const KitchenDisplay = {
 
     this.setClock();
     this.clockTimer = window.setInterval(() => this.setClock(), 30000);
+    this.loadDeliveryPartners();
     this.loadQueue();
     this.refreshTimer = window.setInterval(() => this.loadQueue(), 15000);
+  },
+
+  async loadDeliveryPartners() {
+    try {
+      this.deliveryPartners = await API.getKitchenDeliveryPartners();
+    } catch {
+      this.deliveryPartners = [];
+    }
   },
 
   setClock() {
@@ -47,7 +57,10 @@ const KitchenDisplay = {
     const refresh = document.getElementById("refreshQueue");
     refresh.disabled = true;
     try {
-      const orders = await API.getKitchenQueue(null, true);
+      const [orders] = await Promise.all([
+        API.getKitchenQueue(null, true),
+        this.loadDeliveryPartners()
+      ]);
       document.getElementById("queueUpdatedAt").classList.remove("text-danger");
       const lanes = {
         pending: "laneNew",
@@ -100,6 +113,36 @@ const KitchenDisplay = {
       <li><span class="kds-quantity">${Number(item.quantity) || 0}×</span><span>${UI.escapeHtml(item.item_name)}</span></li>
     `).join("");
 
+    let riderHandoverHtml = "";
+    if (order.status === "ready") {
+      const options = (this.deliveryPartners || []).map(p => {
+        const isSelected = Number(order.delivery_partner_id) === Number(p.id);
+        const vInfo = p.vehicle_type ? ` · ${p.vehicle_type}` : "";
+        const badge = p.active_orders_count > 0 ? ` [${p.active_orders_count} active]` : " [Available]";
+        return `<option value="${p.id}" ${isSelected ? "selected" : ""}>${UI.escapeHtml(p.full_name)}${UI.escapeHtml(vInfo)}${badge}</option>`;
+      }).join("");
+
+      riderHandoverHtml = `
+        <div class="kds-rider-select-container">
+          <label for="riderSelect_${id}" class="form-label small text-warning mb-1 fw-semibold d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-person-badge me-1"></i>Hand over to Rider:</span>
+            ${order.delivery_partner_name ? `<span class="kds-rider-assigned-pill"><i class="bi bi-check-circle"></i>Assigned</span>` : `<span class="text-secondary small">Pick rider</span>`}
+          </label>
+          <select id="riderSelect_${id}" class="form-select form-select-sm kds-rider-dropdown" data-order-id="${id}">
+            <option value="">-- Choose Rider --</option>
+            ${options}
+          </select>
+          ${order.delivery_partner_name ? `<div class="small text-muted mt-1">Current: <strong class="text-light">${UI.escapeHtml(order.delivery_partner_name)}</strong></div>` : ""}
+        </div>
+      `;
+    } else if (order.delivery_partner_name) {
+      riderHandoverHtml = `
+        <div class="small text-muted mb-2">
+          <i class="bi bi-bicycle text-warning me-1"></i>Rider: <strong class="text-light">${UI.escapeHtml(order.delivery_partner_name)}</strong>
+        </div>
+      `;
+    }
+
     return `
       <article class="kds-order-card ${urgencyClass} ${completed ? "is-completed" : ""}" data-order-id="${id}">
         <div class="kds-card-topline">
@@ -113,6 +156,7 @@ const KitchenDisplay = {
         <div class="small text-muted mb-2">Placed ${UI.escapeHtml(UI.formatDateTime(order.created_at))}</div>
         <ul class="kds-order-items">${itemRows}</ul>
         ${order.customer_notes ? `<p class="kds-order-note"><i class="bi bi-chat-left-text" aria-hidden="true"></i><span>${UI.escapeHtml(order.customer_notes)}</span></p>` : ""}
+        ${riderHandoverHtml}
         ${action ? `<button class="kds-action" type="button" data-kds-action="${action[0]}" data-order-id="${id}"><i class="bi ${action[2]}" aria-hidden="true"></i>${action[1]}</button>` : ""}
       </article>
     `;
@@ -123,11 +167,22 @@ const KitchenDisplay = {
     const action = button.dataset.kdsAction;
     if (!Number.isInteger(orderId) || !action) return;
 
+    let deliveryPartnerId = null;
+    if (action === "complete") {
+      const selectElem = document.getElementById(`riderSelect_${orderId}`);
+      if (selectElem && selectElem.value) {
+        deliveryPartnerId = Number(selectElem.value);
+      }
+    }
+
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
     try {
-      await API.updateKitchenOrder(orderId, action);
-      Auth.showToast(`Order #${orderId} updated`, "success");
+      const res = await API.updateKitchenOrder(orderId, action, deliveryPartnerId);
+      const riderNotice = deliveryPartnerId
+        ? ` (Handed over to ${this.deliveryPartners.find(p => p.id === deliveryPartnerId)?.full_name || "Rider"})`
+        : "";
+      Auth.showToast(`Order #${orderId} marked out for delivery${riderNotice}`, "success");
       await this.loadQueue();
     } catch (error) {
       Auth.showToast(error.message || "Could not update this order", "danger");

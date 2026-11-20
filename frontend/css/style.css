@@ -697,6 +697,69 @@ button:disabled,
 .kds-action:hover:not(:disabled) { background: #ea580c; }
 .kds-action:disabled { opacity: 0.65; }
 
+.kds-rider-select-container {
+  margin: 0.75rem 0;
+  padding: 0.65rem;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #0f172a;
+}
+.kds-rider-dropdown {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+  font-size: 0.8rem !important;
+}
+.kds-rider-dropdown:focus {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25) !important;
+}
+.kds-rider-assigned-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Dietary & Allergy Recommendations styles */
+.food-safety-pill.is-suitable {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #86efac !important;
+}
+.food-safety-pill.is-customizable {
+  background: #fef9c3 !important;
+  color: #a16207 !important;
+  border: 1px solid #fde047 !important;
+}
+.food-safety-pill.is-unsuitable {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+.dietary-alternatives-card {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+}
+.dietary-alt-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
 @media (max-width: 1200px) {
   .kds-topbar { grid-template-columns: auto 1fr; }
   .kds-heading { display: none; }

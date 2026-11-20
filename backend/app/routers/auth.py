@@ -3,12 +3,15 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.user import User, CustomerPreference, Address
 from app.models.enums import UserRole
+from app.models.common import utc_now, utc_isoformat
 from app.schemas.auth import (
     UserRegister,
     UserLogin,
     TokenResponse,
     UserOut,
-    DemoLoginRequest
+    DemoLoginRequest,
+    CustomerPreferenceOut,
+    CustomerPreferenceUpdate
 )
 from app.services.auth_service import (
     verify_password,
@@ -146,4 +149,71 @@ def get_me(current_user: User = Depends(get_current_user)):
         role=current_user.role,
         is_active=current_user.is_active,
         loyalty_points=current_user.loyalty_points
+    )
+
+@router.get("/preferences", response_model=CustomerPreferenceOut)
+def get_my_preferences(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Feature 8: Retrieve customer dietary preferences and allergen restrictions.
+    """
+    pref = session.exec(select(CustomerPreference).where(CustomerPreference.user_id == current_user.id)).first()
+    if not pref:
+        pref = CustomerPreference(
+            user_id=current_user.id,
+            dietary_preference="Veg",
+            allergy_info="None",
+            spice_level="Medium",
+            favorite_cuisine="South Indian"
+        )
+        session.add(pref)
+        session.commit()
+        session.refresh(pref)
+    return CustomerPreferenceOut(
+        id=pref.id,
+        user_id=pref.user_id,
+        dietary_preference=pref.dietary_preference,
+        allergy_info=pref.allergy_info,
+        spice_level=pref.spice_level,
+        favorite_cuisine=pref.favorite_cuisine,
+        updated_at=utc_isoformat(pref.updated_at) if pref.updated_at else None
+    )
+
+@router.put("/preferences", response_model=CustomerPreferenceOut)
+def update_my_preferences(
+    payload: CustomerPreferenceUpdate,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Feature 8: Update customer dietary preferences and allergen restrictions.
+    """
+    pref = session.exec(select(CustomerPreference).where(CustomerPreference.user_id == current_user.id)).first()
+    if not pref:
+        pref = CustomerPreference(user_id=current_user.id)
+
+    if payload.dietary_preference is not None:
+        pref.dietary_preference = payload.dietary_preference.strip()
+    if payload.allergy_info is not None:
+        pref.allergy_info = payload.allergy_info.strip()
+    if payload.spice_level is not None:
+        pref.spice_level = payload.spice_level.strip()
+    if payload.favorite_cuisine is not None:
+        pref.favorite_cuisine = payload.favorite_cuisine.strip()
+
+    pref.updated_at = utc_now()
+    session.add(pref)
+    session.commit()
+    session.refresh(pref)
+
+    return CustomerPreferenceOut(
+        id=pref.id,
+        user_id=pref.user_id,
+        dietary_preference=pref.dietary_preference,
+        allergy_info=pref.allergy_info,
+        spice_level=pref.spice_level,
+        favorite_cuisine=pref.favorite_cuisine,
+        updated_at=utc_isoformat(pref.updated_at) if pref.updated_at else None
     )

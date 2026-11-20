@@ -136,19 +136,29 @@
 
         <!-- Dietary & Allergy Profile -->
         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-          <h6 class="fw-bold mb-3"><i class="bi bi-sliders text-primary me-2"></i>Dietary Preferences</h6>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>Smart Dietary Profile</h6>
+            <button class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0" data-bs-toggle="modal" data-bs-target="#editPreferencesModal">
+              <i class="bi bi-pencil-square me-1"></i>Edit
+            </button>
+          </div>
           <div class="mb-2">
-            <span class="small text-muted d-block mb-1">Primary Preference:</span>
-            <span class="badge bg-success me-1">🟢 100% Vegetarian</span>
-            <span class="badge bg-light text-dark border">Jain Options Welcome</span>
+            <span class="small text-muted d-block mb-1">Dietary Requirement:</span>
+            <span id="custDietBadge" class="badge bg-success me-1">Loading...</span>
+          </div>
+          <div class="mb-2">
+            <span class="small text-muted d-block mb-1">Declared Allergens to Avoid:</span>
+            <div id="custAllergensBadges" class="d-flex flex-wrap gap-1">
+              <span class="badge bg-secondary-subtle text-dark border">None</span>
+            </div>
           </div>
           <div class="mb-2">
             <span class="small text-muted d-block mb-1">Spice Tolerance:</span>
-            <span class="badge bg-warning text-dark">🌶️ Medium Spice</span>
+            <span id="custSpiceBadge" class="badge bg-warning text-dark">Medium</span>
           </div>
           <div>
             <span class="small text-muted d-block mb-1">Favorite Cuisine:</span>
-            <span class="badge bg-dark">South Indian Heritage</span>
+            <span id="custCuisineBadge" class="badge bg-dark">South Indian</span>
           </div>
         </div>
 
@@ -175,6 +185,115 @@
     </div>
   </div>
 
+  <!-- Feature 8: Edit Dietary & Allergy Preferences Modal -->
+  <div class="modal fade" id="editPreferencesModal" tabindex="-1" aria-labelledby="editPreferencesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content rounded-4 border-0 shadow">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold" id="editPreferencesModalLabel">
+            <i class="bi bi-shield-check text-success me-2"></i>Dietary & Allergy Settings
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="small text-muted mb-3">Our Smart Food Recommendation Engine will automatically filter dishes, display allergen warnings, and recommend safe alternatives based on these preferences.</p>
+          <form id="preferencesForm" onsubmit="event.preventDefault(); saveCustomerPreferences();">
+            <div class="mb-3">
+              <label for="prefDietary" class="form-label small fw-bold">Primary Dietary Requirement</label>
+              <select id="prefDietary" class="form-select">
+                <option value="Veg">Vegetarian (100% Veg)</option>
+                <option value="Any">No Preference (Any Food)</option>
+                <option value="Vegan">Vegan (Plant-Based Only)</option>
+                <option value="Jain">Jain (No Root Veg, No Onion/Garlic)</option>
+                <option value="Gluten-Free">Gluten-Free</option>
+                <option value="Dairy-Free">Dairy-Free</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold mb-1">Allergens to Avoid (Check all that apply)</label>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Peanuts" id="algPeanuts">
+                    <label class="form-check-label small" for="algPeanuts">🥜 Peanuts</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Tree Nuts" id="algNuts">
+                    <label class="form-check-label small" for="algNuts">🌰 Tree Nuts (Cashew/Almond)</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Dairy" id="algDairy">
+                    <label class="form-check-label small" for="algDairy">🥛 Dairy / Milk / Cheese</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Gluten" id="algGluten">
+                    <label class="form-check-label small" for="algGluten">🌾 Gluten / Wheat</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Eggs" id="algEggs">
+                    <label class="form-check-label small" for="algEggs">🥚 Eggs</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Soy" id="algSoy">
+                    <label class="form-check-label small" for="algSoy">🌱 Soy / Soya</label>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="form-check">
+                    <input class="form-check-input allergen-check" type="checkbox" value="Shellfish" id="algShellfish">
+                    <label class="form-check-label small" for="algShellfish">🦐 Shellfish / Seafood</label>
+                  </div>
+                </div>
+              </div>
+              <label for="prefCustomAllergens" class="form-label small text-muted mb-1">Additional allergens (comma-separated):</label>
+              <input type="text" id="prefCustomAllergens" class="form-control form-control-sm" placeholder="e.g. Sesame, Mustard">
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label for="prefSpice" class="form-label small fw-bold">Spice Tolerance</label>
+                <select id="prefSpice" class="form-select form-select-sm">
+                  <option value="Mild">Mild 🟢</option>
+                  <option value="Medium">Medium 🌶️</option>
+                  <option value="Spicy">Spicy 🔥</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label for="prefCuisine" class="form-label small fw-bold">Favorite Cuisine</label>
+                <select id="prefCuisine" class="form-select form-select-sm">
+                  <option value="South Indian">South Indian</option>
+                  <option value="North Indian">North Indian</option>
+                  <option value="Pizza">Pizza</option>
+                  <option value="Burgers">Burgers</option>
+                  <option value="Biryani">Biryani</option>
+                  <option value="Chinese">Chinese</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" id="savePrefBtn" class="btn btn-sm btn-primary-orange px-3">
+                <i class="bi bi-check2 me-1"></i>Save Preferences
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/ui.js?v=20261119-datetime"></script>
@@ -195,9 +314,101 @@
       document.getElementById("custWelcomeName").textContent = `Welcome, ${user.full_name}!`;
       document.getElementById("statLoyaltyPoints").textContent = `${user.loyalty_points || 450} pts`;
 
+      await loadCustomerPreferences();
       await loadCustomerOrders();
       await loadCustomerRecs();
     });
+
+    async function loadCustomerPreferences() {
+      try {
+        const pref = await API.getPreferences();
+        if (!pref) return;
+
+        // Update display card
+        const dietBadge = document.getElementById("custDietBadge");
+        if (dietBadge) {
+          dietBadge.textContent = pref.dietary_preference || "Any";
+          dietBadge.className = `badge ${pref.dietary_preference === 'Veg' ? 'bg-success' : 'bg-primary'}`;
+        }
+
+        const statDiet = document.getElementById("statDietPref");
+        if (statDiet) {
+          statDiet.textContent = pref.dietary_preference === 'Veg' ? 'Veg Only' : (pref.dietary_preference || 'Flexible');
+        }
+
+        const allergensDiv = document.getElementById("custAllergensBadges");
+        if (allergensDiv) {
+          const raw = pref.allergy_info || "None";
+          const list = raw.split(/[,;|]/).map(t => t.trim()).filter(t => t && !['none', 'n/a', 'no allergies'].includes(t.toLowerCase()));
+          if (list.length === 0) {
+            allergensDiv.innerHTML = `<span class="badge bg-secondary-subtle text-dark border">None</span>`;
+          } else {
+            allergensDiv.innerHTML = list.map(a => `<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-exclamation-triangle me-1"></i>${UI.escapeHtml(a)}</span>`).join('');
+          }
+        }
+
+        const spiceBadge = document.getElementById("custSpiceBadge");
+        if (spiceBadge) spiceBadge.textContent = `${pref.spice_level || "Medium"} Spice`;
+
+        const cuisineBadge = document.getElementById("custCuisineBadge");
+        if (cuisineBadge) cuisineBadge.textContent = pref.favorite_cuisine || "South Indian";
+
+        // Populate modal form inputs
+        const selectDiet = document.getElementById("prefDietary");
+        if (selectDiet && pref.dietary_preference) selectDiet.value = pref.dietary_preference;
+
+        const selectSpice = document.getElementById("prefSpice");
+        if (selectSpice && pref.spice_level) selectSpice.value = pref.spice_level;
+
+        const selectCuisine = document.getElementById("prefCuisine");
+        if (selectCuisine && pref.favorite_cuisine) selectCuisine.value = pref.favorite_cuisine;
+
+        // Reset & check checkboxes
+        const currentAllergens = (pref.allergy_info || "").toLowerCase();
+        document.querySelectorAll(".allergen-check").forEach(cb => {
+          cb.checked = currentAllergens.includes(cb.value.toLowerCase());
+        });
+      } catch (err) {
+        console.warn("Could not load customer preferences:", err);
+      }
+    }
+
+    async function saveCustomerPreferences() {
+      const btn = document.getElementById("savePrefBtn");
+      btn.disabled = true;
+      try {
+        const dietary = document.getElementById("prefDietary").value;
+        const spice = document.getElementById("prefSpice").value;
+        const cuisine = document.getElementById("prefCuisine").value;
+
+        const selectedChecks = Array.from(document.querySelectorAll(".allergen-check:checked")).map(cb => cb.value);
+        const customAllergens = document.getElementById("prefCustomAllergens").value.trim();
+        if (customAllergens) {
+          selectedChecks.push(...customAllergens.split(/[,;|]/).map(t => t.trim()).filter(Boolean));
+        }
+
+        const allergyInfo = selectedChecks.length ? selectedChecks.join(", ") : "None";
+
+        await API.updatePreferences({
+          dietary_preference: dietary,
+          allergy_info: allergyInfo,
+          spice_level: spice,
+          favorite_cuisine: cuisine
+        });
+
+        Auth.showToast("Dietary preferences and allergen profile updated!", "success");
+        const modalElem = document.getElementById("editPreferencesModal");
+        const modal = bootstrap.Modal.getInstance(modalElem);
+        if (modal) modal.hide();
+
+        await loadCustomerPreferences();
+        await loadCustomerRecs();
+      } catch (err) {
+        Auth.showToast(err.message || "Failed to update preferences", "danger");
+      } finally {
+        btn.disabled = false;
+      }
+    }
 
     async function loadCustomerOrders() {
       const container = document.getElementById("customerOrdersList");

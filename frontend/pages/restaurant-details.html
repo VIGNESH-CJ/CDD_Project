@@ -59,11 +59,21 @@
               <option value="vegetarian">Vegetarian</option>
               <option value="vegan">Vegan</option>
               <option value="jain">Jain</option>
+              <option value="gluten-free">Gluten-Free</option>
+              <option value="dairy-free">Dairy-Free</option>
             </select>
 
             <label class="form-label small fw-semibold" for="allergenFilter">Avoid these allergens</label>
             <input type="text" id="allergenFilter" class="form-control" placeholder="e.g. peanuts, dairy">
-            <div class="form-text mb-3">Separate terms with commas. Matches use menu ingredients and declared allergens.</div>
+            <div id="allergenQuickPills" class="d-flex flex-wrap gap-1 mt-2 mb-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0 px-2 small allergen-pill" data-allergen="peanuts">Peanuts</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0 px-2 small allergen-pill" data-allergen="dairy">Dairy</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0 px-2 small allergen-pill" data-allergen="gluten">Gluten</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0 px-2 small allergen-pill" data-allergen="nuts">Nuts</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill py-0 px-2 small allergen-pill" data-allergen="eggs">Eggs</button>
+            </div>
+            <div class="form-text mb-2">Separate terms with commas. Matches use ingredients & allergens.</div>
+            <div id="profileAutoAppliedBadge" class="small text-success mb-3 d-none"><i class="bi bi-shield-check me-1"></i>Profile preferences loaded</div>
 
             <label class="form-label small fw-semibold" for="safetyFilter">Show</label>
             <select id="safetyFilter" class="form-select mb-3">

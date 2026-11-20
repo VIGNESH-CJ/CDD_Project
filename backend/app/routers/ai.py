@@ -8,6 +8,7 @@ from app.algorithms.recommendations import get_personalized_recommendations
 from app.algorithms.food_assistant import process_food_chat
 from app.algorithms.demand_prediction import train_and_predict_demand
 from app.algorithms.smart_inventory import get_inventory_and_waste_analysis
+from app.algorithms.dietary_service import get_dietary_and_allergy_menu
 from app.models.enums import UserRole
 from app.models.user import User
 from app.services.auth_service import get_optional_user, require_role
@@ -106,3 +107,25 @@ def get_smart_inventory(
         "waste_records_count": sum(report["waste_records_count"] for report in reports),
         "recent_waste_logs": [item for report in reports for item in report["recent_waste_logs"]][-8:],
     }
+
+@router.get("/dietary-menu")
+def get_dietary_menu(
+    restaurant_id: Optional[int] = None,
+    dietary_preference: Optional[str] = None,
+    allergens: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_optional_user),
+    session: Session = Depends(get_session)
+):
+    """
+    Feature 8: Smart Food Allergy and Dietary Recommendation System
+    Filters dishes based on dietary requirements, identifies dishes containing
+    specified allergens, and suggests suitable alternative dishes.
+    """
+    user_id = current_user.id if current_user and current_user.role == UserRole.CUSTOMER else None
+    return get_dietary_and_allergy_menu(
+        session=session,
+        restaurant_id=restaurant_id,
+        dietary_preference=dietary_preference,
+        allergens=allergens,
+        user_id=user_id
+    )

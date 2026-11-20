@@ -69,6 +69,13 @@ def run_seed():
                 "loyalty_points": 0
             },
             {
+                "email": "delivery2@demo.com",
+                "full_name": "Rahul Verma (Delivery Partner)",
+                "phone": "+91 98450 77889",
+                "role": UserRole.DELIVERY_PARTNER,
+                "loyalty_points": 0
+            },
+            {
                 "email": "superadmin@demo.com",
                 "full_name": "Kavita Rao (Super Admin)",
                 "phone": "+91 98450 55667",
@@ -118,7 +125,7 @@ def run_seed():
         )
         session.add(addr)
 
-        # Delivery Partner Profile
+        # Delivery Partner Profiles
         delivery_user = created_users["delivery@demo.com"]
         deliv_profile = DeliveryProfile(
             user_id=delivery_user.id,
@@ -132,6 +139,20 @@ def run_seed():
             rating=4.9
         )
         session.add(deliv_profile)
+
+        delivery_user2 = created_users["delivery2@demo.com"]
+        deliv_profile2 = DeliveryProfile(
+            user_id=delivery_user2.id,
+            vehicle_type="Motorcycle (Hero Splendor Plus)",
+            vehicle_number="KA-05-AB-4321",
+            current_latitude=12.9720,
+            current_longitude=77.5950,
+            is_available=True,
+            total_deliveries=88,
+            total_earnings=3960.0,
+            rating=4.8
+        )
+        session.add(deliv_profile2)
         session.commit()
 
         # 2. Seed Categories

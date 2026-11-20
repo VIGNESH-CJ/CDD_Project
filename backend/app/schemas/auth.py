@@ -32,3 +32,18 @@ class UserOut(BaseModel):
 
 class DemoLoginRequest(BaseModel):
     role: UserRole
+
+class CustomerPreferenceOut(BaseModel):
+    id: Optional[int] = None
+    user_id: int
+    dietary_preference: str
+    allergy_info: Optional[str] = None
+    spice_level: str
+    favorite_cuisine: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class CustomerPreferenceUpdate(BaseModel):
+    dietary_preference: Optional[str] = None
+    allergy_info: Optional[str] = None
+    spice_level: Optional[str] = None
+    favorite_cuisine: Optional[str] = None

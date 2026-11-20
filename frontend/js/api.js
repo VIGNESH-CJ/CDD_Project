@@ -101,6 +101,17 @@ const API = {
     return this.request("/api/auth/me");
   },
 
+  async getPreferences() {
+    return this.request("/api/auth/preferences");
+  },
+
+  async updatePreferences(preferences) {
+    return this.request("/api/auth/preferences", {
+      method: "PUT",
+      body: JSON.stringify(preferences)
+    });
+  },
+
   // Restaurants & Menu
   async getRestaurants(params = {}) {
     const query = new URLSearchParams(params).toString();
@@ -283,8 +294,14 @@ const API = {
     return this.request(`/api/kitchen/queue${q}`);
   },
 
-  async updateKitchenOrder(orderId, action) {
-    return this.request(`/api/kitchen/orders/${orderId}/action?action=${action}`, { method: "POST" });
+  async getKitchenDeliveryPartners() {
+    return this.request("/api/kitchen/delivery-partners");
+  },
+
+  async updateKitchenOrder(orderId, action, deliveryPartnerId = null) {
+    const params = new URLSearchParams({ action });
+    if (deliveryPartnerId) params.set("delivery_partner_id", deliveryPartnerId);
+    return this.request(`/api/kitchen/orders/${orderId}/action?${params.toString()}`, { method: "POST" });
   },
 
   // Delivery
@@ -360,5 +377,15 @@ const API = {
   async getSmartInventory(restaurantId = null) {
     const q = restaurantId ? `?restaurant_id=${restaurantId}` : "";
     return this.request(`/api/ai/smart-inventory${q}`);
+  },
+
+  // Feature 8: Smart Food Allergy & Dietary Recommendations
+  async getDietaryMenu(restaurantId = null, dietaryPreference = "", allergens = "") {
+    const params = new URLSearchParams();
+    if (restaurantId) params.set("restaurant_id", restaurantId);
+    if (dietaryPreference) params.set("dietary_preference", dietaryPreference);
+    if (allergens) params.set("allergens", allergens);
+    const q = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/api/ai/dietary-menu${q}`);
   }
 };
