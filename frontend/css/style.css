@@ -571,6 +571,17 @@ button:disabled,
 .delivery-map { height: 250px; background: #e2e8f0; }
 .tracking-map-wrap { height: 240px; background: #e2e8f0; }
 .tracking-map { width: 100%; height: 100%; }
+.tracking-pin,
+.partner-map-icon {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  transition: transform 0.38s linear !important;
+}
+.rider-pin {
+  z-index: 1000 !important;
+}
 .chart-panel { position: relative; width: 100%; }
 .chart-panel-tall { height: 300px; }
 .chart-panel-short { height: 280px; }

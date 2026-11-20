@@ -266,69 +266,6 @@
         Auth.showToast(err.message, "danger");
       }
     }
-
-    function startRiderMap() {
-      const canvas = document.getElementById("riderMapCanvas");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-
-      let t = 0;
-      function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // City streets grid
-        ctx.strokeStyle = "#CBD5E1";
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 40) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 40) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
-
-        // Road Highway
-        ctx.beginPath();
-        ctx.strokeStyle = "#10B981";
-        ctx.lineWidth = 5;
-        ctx.moveTo(40, 200);
-        ctx.lineTo(180, 120);
-        ctx.lineTo(340, 50);
-        ctx.stroke();
-
-        // Nodes
-        ctx.fillStyle = "#1E293B";
-        ctx.beginPath(); ctx.arc(40, 200, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.fillText("Hub", 30, 220);
-
-        ctx.fillStyle = "#16A34A";
-        ctx.beginPath(); ctx.arc(340, 50, 6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillText("Drop", 330, 40);
-
-        // Moving Scooter
-        const cycle = (t % 300) / 300.0;
-        let rx, ry;
-        if (cycle < 0.5) {
-          const sub = cycle / 0.5;
-          rx = 40 + (180 - 40) * sub;
-          ry = 200 + (120 - 200) * sub;
-        } else {
-          const sub = (cycle - 0.5) / 0.5;
-          rx = 180 + (340 - 180) * sub;
-          ry = 120 + (50 - 120) * sub;
-        }
-
-        ctx.fillStyle = "#FF6B00";
-        ctx.beginPath(); ctx.arc(rx, ry, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#FFF";
-        ctx.font = "10px sans-serif";
-        ctx.fillText("🛵", rx - 6, ry + 4);
-
-        t++;
-        requestAnimationFrame(animate);
-      }
-      animate();
-    }
   </script>
 </body>
 </html>

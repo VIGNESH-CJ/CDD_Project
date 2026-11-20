@@ -123,9 +123,69 @@
     setStatus("Waiting for GPS location…", "connected");
   });
 
-  simulateButton.addEventListener("click", () => {
+  function densifyRoute(coordinates, targetStepCount = 120) {
+    if (!coordinates || coordinates.length === 0) return [];
+    if (coordinates.length === 1) return [coordinates[0]];
+    const distances = [0];
+    let totalDistance = 0;
+    for (let i = 1; i < coordinates.length; i++) {
+      const dLat = coordinates[i][0] - coordinates[i - 1][0];
+      const dLon = coordinates[i][1] - coordinates[i - 1][1];
+      const segDist = Math.hypot(dLat, dLon);
+      totalDistance += segDist;
+      distances.push(totalDistance);
+    }
+    if (totalDistance === 0) return new Array(targetStepCount).fill(coordinates[0]);
+    const dense = [];
+    const stepSize = totalDistance / (targetStepCount - 1);
+    let segIndex = 0;
+    for (let step = 0; step < targetStepCount; step++) {
+      const targetDist = step * stepSize;
+      while (segIndex < distances.length - 2 && distances[segIndex + 1] < targetDist) {
+        segIndex++;
+      }
+      const d1 = distances[segIndex];
+      const d2 = distances[segIndex + 1];
+      const p1 = coordinates[segIndex];
+      const p2 = coordinates[segIndex + 1];
+      const segLen = d2 - d1;
+      const factor = segLen > 0 ? (targetDist - d1) / segLen : 0;
+      const lat = p1[0] + (p2[0] - p1[0]) * factor;
+      const lon = p1[1] + (p2[1] - p1[1]) * factor;
+      dense.push([Number(lat.toFixed(6)), Number(lon.toFixed(6))]);
+    }
+    return dense;
+  }
+
+  async function getOrderRoadRoute(orderId) {
+    try {
+      const res = await fetch(`/api/delivery/orders/${orderId}/location`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const start = [data.restaurant.lat, data.restaurant.lon];
+      const end = [data.customer.lat, data.customer.lon];
+      const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+      const routeRes = await fetch(url);
+      if (routeRes.ok) {
+        const routeData = await routeRes.json();
+        if (routeData.routes && routeData.routes.length > 0) {
+          return routeData.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        }
+      }
+      return [start, [start[0] + (end[0]-start[0])*0.5 + 0.003, start[1] + (end[1]-start[1])*0.5 - 0.002], end];
+    } catch {
+      return [[12.9784, 77.6408], [12.9720, 77.6350], [12.9620, 77.6290], [12.9352, 77.6245]];
+    }
+  }
+
+  simulateButton.addEventListener("click", async () => {
     stopLocationSources();
-    const route = [[12.9716, 77.5946], [12.968, 77.600], [12.962, 77.606], [12.955, 77.612], [12.948, 77.618]];
+    const orderId = Number(orderInput.value);
+    setStatus("Calculating road delivery path…");
+    const rawRoute = await getOrderRoadRoute(orderId);
+    const smoothRoute = densifyRoute(rawRoute, 120);
     let index = 0;
     simulationTimer = window.setInterval(() => {
       if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -133,10 +193,16 @@
         setSharingControls(false);
         return;
       }
-      publish(...route[index++ % route.length]);
-    }, 1800);
+      const coords = smoothRoute[index % smoothRoute.length];
+      publish(coords[0], coords[1]);
+      index++;
+      if (index >= smoothRoute.length) {
+        setStatus("🎉 Arrived at delivery location!", "connected");
+        stopLocationSources();
+      }
+    }, 400);
     setSharingControls(true);
-    setStatus("Demo route is sharing location.", "live");
+    setStatus("Smooth road route is sharing location.", "live");
   });
 
   stopButton.addEventListener("click", () => {
