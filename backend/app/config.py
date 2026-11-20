@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import List
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -7,6 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _DEVELOPMENT_SECRET = "ai-foodie-super-secret-jwt-key-expo-2026-demo-secure"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_SQLITE_URL = f"sqlite:///{(_PROJECT_ROOT / 'database' / 'aifoodie.db').as_posix()}"
 _DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -15,6 +18,21 @@ _DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
 ]
+
+
+def _load_database_url() -> str:
+    """Resolve local SQLite URLs once, independently of Uvicorn's CWD."""
+    raw = os.getenv("DATABASE_URL", _DEFAULT_SQLITE_URL).strip()
+    sqlite_prefix = "sqlite:///"
+    if not raw.startswith(sqlite_prefix):
+        return raw
+    database_path = raw[len(sqlite_prefix):]
+    if database_path in {":memory:", ""}:
+        return raw
+    path = Path(database_path)
+    if path.is_absolute():
+        return raw
+    return f"{sqlite_prefix}{(_PROJECT_ROOT / path).resolve().as_posix()}"
 
 
 def _load_allowed_origins() -> List[str]:
@@ -47,7 +65,10 @@ class Settings(BaseModel):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
     
     # Database URL
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./database/aifoodie.db")
+    # Anchor the default SQLite database to the repository.  A relative URL
+    # depends on the shell's working directory and previously created both
+    # ``database/aifoodie.db`` and ``backend/database/aifoodie.db``.
+    DATABASE_URL: str = _load_database_url()
     
     # Server host & port
     BACKEND_HOST: str = os.getenv("BACKEND_HOST", "127.0.0.1")

@@ -67,6 +67,9 @@
       <a href="#demand" class="sidebar-link" onclick="switchTab('demand', this)">
         <i class="bi bi-cpu"></i> AI Demand Forecast (ML)
       </a>
+      <a href="#intelligence" class="sidebar-link" onclick="switchTab('intelligence', this)">
+        <i class="bi bi-stars"></i> Smart Operations Hub
+      </a>
 
       <hr class="border-secondary my-4">
       <div class="text-uppercase small text-secondary fw-bold mb-2 px-3">Expo Role Switching</div>
@@ -533,6 +536,28 @@
         </div>
       </div>
 
+      <div id="tab-intelligence" class="tab-pane" hidden>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+          <div>
+            <span class="badge bg-dark text-white rounded-pill mb-1"><i class="bi bi-stars text-warning me-1"></i>LIVE DECISION SUPPORT</span>
+            <h4 class="fw-bold mb-1">Smart Operations Hub</h4>
+            <p class="text-muted small mb-0">Kitchen digital twin, early delay warnings, menu actions, procurement and grounded operations copilot.</p>
+          </div>
+          <button class="btn btn-outline-dark btn-sm" type="button" onclick="loadSmartOperations()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh intelligence</button>
+        </div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4"><div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"><div class="text-muted small">Kitchen queue pressure</div><h3 id="twinPressure" class="fw-bold mb-1">—</h3><div id="twinMode" class="small text-muted">Loading…</div></div></div>
+          <div class="col-md-4"><div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"><div class="text-muted small">Projected queue clearance</div><h3 id="twinClearance" class="fw-bold mb-1">—</h3><div id="twinRecommendation" class="small text-muted">Loading…</div></div></div>
+          <div class="col-md-4"><div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"><div class="text-muted small">Orders needing attention</div><h3 id="smartAlertCount" class="fw-bold mb-1">—</h3><div class="small text-muted">Predicted before a late delivery happens</div></div></div>
+        </div>
+        <div class="row g-4">
+          <div class="col-lg-6"><div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100"><h5 class="fw-bold">Early delay & quality alerts</h5><div id="smartDelayAlerts" class="small text-muted">Loading alerts…</div></div></div>
+          <div class="col-lg-6"><div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100"><h5 class="fw-bold">AI menu engineering</h5><div id="smartMenuEngineering" class="small text-muted">Loading menu actions…</div></div></div>
+          <div class="col-lg-6"><div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100"><h5 class="fw-bold">Demand-based procurement</h5><div id="smartProcurement" class="small text-muted">Loading procurement plan…</div></div></div>
+          <div class="col-lg-6"><div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100"><h5 class="fw-bold">Restaurant operations copilot</h5><form id="smartCopilotForm" class="input-group mb-3"><input id="smartCopilotQuestion" class="form-control" maxlength="500" placeholder="Why are orders late today?" required><button class="btn btn-primary-orange" type="submit">Ask</button></form><div id="smartCopilotAnswer" class="small text-muted">Ask about delays, waste, stock, or menu performance.</div></div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -620,7 +645,7 @@
       if (selectedRestaurantId) {
         refreshRestaurantData();
         const hashTab = window.location.hash.replace("#", "");
-        if (["restaurants", "overview", "orders", "menu", "inventory", "analytics", "demand"].includes(hashTab)) {
+        if (["restaurants", "overview", "orders", "menu", "inventory", "analytics", "demand", "intelligence"].includes(hashTab)) {
           const link = document.querySelector(`.sidebar-link[href="#${hashTab}"]`);
           if (link) switchTab(hashTab, link);
         }
@@ -629,6 +654,7 @@
       document.getElementById("restaurantForm").addEventListener("submit", saveRestaurant);
       document.getElementById("addIngredientForm").addEventListener("submit", addInventoryIngredient);
       document.getElementById("wasteLogForm").addEventListener("submit", logFoodWaste);
+      document.getElementById("smartCopilotForm").addEventListener("submit", askSmartCopilot);
 
       // Listen to real-time events
       WSClient.addListener((event) => {
@@ -768,6 +794,7 @@
         if (tabId === "analytics") loadAnalyticsCharts();
         if (tabId === "inventory") loadInventoryTab();
         if (tabId === "demand") loadDemandForecast();
+        if (tabId === "intelligence") loadSmartOperations();
         if (tabId === "overview") loadOverviewData();
       });
     }
@@ -1231,6 +1258,43 @@
         `).join('');
       } catch (err) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-danger">${err.message}</td></tr>`;
+      }
+    }
+
+    async function loadSmartOperations() {
+      if (!selectedRestaurantId) return;
+      const setError = (id, err) => { document.getElementById(id).textContent = err.message || "Could not load this insight."; };
+      try {
+        const [twin, alerts, menuActions, procurement] = await Promise.all([
+          API.request(`/api/smart/ops/restaurants/${selectedRestaurantId}/kitchen-twin`),
+          API.request(`/api/smart/ops/restaurants/${selectedRestaurantId}/delay-alerts`),
+          API.request(`/api/smart/ops/restaurants/${selectedRestaurantId}/menu-engineering`),
+          API.request(`/api/smart/ops/restaurants/${selectedRestaurantId}/procurement`)
+        ]);
+        document.getElementById("twinPressure").textContent = `${twin.queue_pressure}%`;
+        document.getElementById("twinMode").textContent = `${twin.service_mode} · ${twin.active_orders} active order(s)`;
+        document.getElementById("twinClearance").textContent = `${twin.projected_clearance_minutes} min`;
+        document.getElementById("twinRecommendation").textContent = twin.recommendation;
+        document.getElementById("smartAlertCount").textContent = alerts.length;
+        document.getElementById("smartDelayAlerts").innerHTML = alerts.length ? alerts.map(alert => `<div class="border-top py-2"><strong>#${UI.escapeHtml(alert.order_number)}</strong> · delay risk ${alert.delay_risk}% · quality risk ${alert.quality_risk}%<div class="text-muted">${UI.escapeHtml(alert.recommended_action)}</div></div>`).join("") : "No active orders need intervention.";
+        document.getElementById("smartMenuEngineering").innerHTML = menuActions.slice(0, 6).map(action => `<div class="border-top py-2"><strong>${UI.escapeHtml(action.name)}</strong><span class="badge bg-light text-dark border ms-2">${UI.escapeHtml(action.action)}</span><div class="text-muted">${UI.escapeHtml(action.reason)}</div></div>`).join("") || "No menu data available yet.";
+        document.getElementById("smartProcurement").innerHTML = procurement.recommendations.length ? procurement.recommendations.map(item => `<div class="border-top py-2"><strong>${UI.escapeHtml(item.ingredient)}</strong><div class="text-muted">${UI.escapeHtml(item.reason)}${item.recommended_quantity ? ` · Suggested: ${item.recommended_quantity} ${UI.escapeHtml(item.unit)}` : ""}</div></div>`).join("") : "Inventory levels are currently on plan.";
+      } catch (err) {
+        ["smartDelayAlerts", "smartMenuEngineering", "smartProcurement"].forEach(id => setError(id, err));
+      }
+    }
+
+    async function askSmartCopilot(event) {
+      event.preventDefault();
+      const answer = document.getElementById("smartCopilotAnswer");
+      try {
+        const data = await API.request(`/api/smart/ops/restaurants/${selectedRestaurantId}/copilot`, {
+          method: "POST",
+          body: JSON.stringify({ question: document.getElementById("smartCopilotQuestion").value.trim() })
+        });
+        answer.textContent = data.answer;
+      } catch (err) {
+        answer.textContent = err.message || "Could not consult the operations copilot.";
       }
     }
   </script>

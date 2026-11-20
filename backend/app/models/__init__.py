@@ -15,6 +15,15 @@ from app.models.cart import CartItem
 from app.models.review import Review, Favorite
 from app.models.waste import FoodWasteRecord
 from app.models.delivery import DeliveryProfile, DeliveryAssignment
+from app.models.smart import (
+    PersonalizationProfile,
+    GroupOrder,
+    GroupOrderMember,
+    GroupOrderItem,
+    FoodRescueOffer,
+    OrderIntelligence,
+    PostDeliveryFeedback,
+)
 
 __all__ = [
     "UserRole",
@@ -42,4 +51,11 @@ __all__ = [
     "FoodWasteRecord",
     "DeliveryProfile",
     "DeliveryAssignment",
+    "PersonalizationProfile",
+    "GroupOrder",
+    "GroupOrderMember",
+    "GroupOrderItem",
+    "FoodRescueOffer",
+    "OrderIntelligence",
+    "PostDeliveryFeedback",
 ]

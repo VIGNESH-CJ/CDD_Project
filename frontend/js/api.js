@@ -387,5 +387,36 @@ const API = {
     if (allergens) params.set("allergens", allergens);
     const q = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/api/ai/dietary-menu${q}`);
+  },
+
+  // Smart Food Intelligence
+  async getSmartProfile() {
+    return this.request("/api/smart/profile");
+  },
+
+  async updateSmartProfile(payload) {
+    return this.request("/api/smart/profile", { method: "PUT", body: JSON.stringify(payload) });
+  },
+
+  async getSmartRecommendations(restaurantId = null, limit = 8) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (restaurantId) params.set("restaurant_id", String(restaurantId));
+    return this.request(`/api/smart/recommendations?${params}`);
+  },
+
+  async getCheckoutSafety(payload) {
+    return this.request("/api/smart/safety/checkout-preview", { method: "POST", body: JSON.stringify(payload) });
+  },
+
+  async getFoodMemory() {
+    return this.request("/api/smart/food-memory");
+  },
+
+  async getRescueOffers() {
+    return this.request("/api/smart/rescue-offers");
+  },
+
+  async getOrderExperience(orderId) {
+    return this.request(`/api/smart/orders/${orderId}/experience`);
   }
 };

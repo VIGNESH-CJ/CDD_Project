@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Food Hub – AI Foodie</title>
+  <link rel="icon" href="/static/assets/aifoodie-mark.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/style.css?v=20261118-visual-refresh">
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+        <img class="brand-logo" src="/static/assets/aifoodie-mark.svg" alt="" aria-hidden="true">
+        <span class="brand-font fs-4 text-dark">AI <span class="brand-orange">Foodie</span></span>
+      </a>
+      <div class="d-flex gap-2 align-items-center">
+        <a class="btn btn-outline-dark btn-sm" href="/pages/restaurants.html"><i class="bi bi-shop me-1"></i>Restaurants</a>
+        <a class="btn btn-primary-orange btn-sm" href="/pages/cart.html"><i class="bi bi-cart3 me-1"></i>Cart</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4 py-lg-5">
+    <section class="rounded-4 p-4 p-lg-5 text-white mb-4" style="background:linear-gradient(120deg,#211c34,#ff6b00)">
+      <span class="badge text-bg-light text-dark mb-2">20 SMART CAPABILITIES</span>
+      <h1 class="display-6 fw-bold">Your food, understood better.</h1>
+      <p class="mb-0 opacity-75">Personalized, safety-first decisions for customers—and transparent operational intelligence for kitchens.</p>
+    </section>
+
+    <div id="smartAuthNotice" class="alert alert-warning d-none">Sign in to use personalized recommendations, group orders, food memory, and safety checks.</div>
+
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <section class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-body p-4">
+            <h2 class="h5 fw-bold"><i class="bi bi-person-hearts text-warning me-2"></i>Food profile</h2>
+            <p class="small text-muted">Sets the context used by the Mood Matcher and Health Goal picks.</p>
+            <form id="smartProfileForm">
+              <label class="form-label small fw-semibold" for="smartMood">How are you feeling?</label>
+              <select id="smartMood" class="form-select mb-3"><option value="neutral">Neutral</option><option value="tired">Tired</option><option value="stressed">Stressed</option><option value="comfort">Want comfort food</option><option value="celebrating">Celebrating</option></select>
+              <label class="form-label small fw-semibold" for="smartGoal">Health goal</label>
+              <select id="smartGoal" class="form-select mb-3"><option value="balanced">Balanced</option><option value="weight loss">Weight loss</option><option value="muscle gain">Muscle gain</option><option value="high protein">High protein</option><option value="low calorie">Low calorie</option></select>
+              <label class="form-label small fw-semibold" for="smartBudget">Meal budget (₹)</label>
+              <input id="smartBudget" type="number" min="0" class="form-control mb-3" placeholder="No limit">
+              <button class="btn btn-primary-orange w-100" type="submit">Save food profile</button>
+            </form>
+          </div>
+        </section>
+      </div>
+
+      <div class="col-lg-8">
+        <section class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between gap-3 align-items-start mb-2"><div><h2 class="h5 fw-bold mb-1"><i class="bi bi-stars text-warning me-2"></i>Explainable picks</h2><p class="small text-muted mb-0">Recommendations include the reason, live availability forecast, and dish confidence.</p></div><button id="refreshSmartPicks" type="button" class="btn btn-outline-dark btn-sm">Refresh</button></div>
+            <div id="smartRecommendations" class="row g-3 mt-1"><div class="col-12 text-muted small">Loading your picks…</div></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="col-lg-7">
+        <section class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-2"><div><h2 class="h5 fw-bold mb-1"><i class="bi bi-recycle text-success me-2"></i>Food rescue marketplace</h2><p class="small text-muted mb-0">Reserve fresh surplus meals before they become waste.</p></div><button id="refreshRescue" class="btn btn-outline-success btn-sm" type="button">Refresh</button></div>
+          <div id="rescueOffers" class="row g-3 mt-1"><div class="col-12 text-muted small">Loading rescue offers…</div></div>
+        </div></section>
+      </div>
+
+      <div class="col-lg-5">
+        <section class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+          <h2 class="h5 fw-bold"><i class="bi bi-people text-primary me-2"></i>Start a group order</h2>
+          <p class="small text-muted">Share the invite code so friends can add dishes from one restaurant.</p>
+          <form id="groupOrderForm">
+            <input id="groupRestaurantId" class="form-control mb-2" type="number" min="1" placeholder="Restaurant ID (for example, 1)" required>
+            <input id="groupAddress" class="form-control mb-2" maxlength="400" placeholder="Delivery address" required>
+            <button class="btn btn-outline-dark w-100" type="submit">Create invite room</button>
+          </form>
+          <div id="groupOrderResult" class="small mt-3"></div>
+        </div></section>
+      </div>
+
+      <div class="col-lg-6">
+        <section class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+          <h2 class="h5 fw-bold"><i class="bi bi-clock-history text-primary me-2"></i>Personal food memory</h2>
+          <p class="small text-muted">Your most-loved dishes and recent orders, ready for a thoughtful reorder.</p>
+          <div id="foodMemory" class="small text-muted">Loading your food memory…</div>
+        </div></section>
+      </div>
+
+      <div class="col-lg-6">
+        <section class="card border-0 shadow-sm rounded-4 h-100"><div class="card-body p-4">
+          <h2 class="h5 fw-bold"><i class="bi bi-truck text-primary me-2"></i>Transparent order ETA</h2>
+          <p class="small text-muted">See kitchen queue, preparation, rider assignment, travel, delay risk, quality risk, and carbon estimate.</p>
+          <form id="orderExperienceForm" class="input-group"><input id="experienceOrderId" class="form-control" type="number" min="1" placeholder="Your order ID"><button class="btn btn-outline-dark" type="submit">Check</button></form>
+          <div id="orderExperience" class="small text-muted mt-3">Enter an order ID to see its live breakdown.</div>
+        </div></section>
+      </div>
+    </div>
+
+    <section class="card border-0 shadow-sm rounded-4 mt-4"><div class="card-body p-4">
+      <h2 class="h5 fw-bold">Included intelligence</h2>
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-2 small text-muted" id="capabilityList"></div>
+    </div></section>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js?v=20261119-datetime"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/smart-hub.js"></script>
+</body>
+</html>

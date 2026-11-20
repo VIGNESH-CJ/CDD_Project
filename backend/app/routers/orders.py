@@ -7,7 +7,9 @@ from app.models.user import User
 from app.models.restaurant import Restaurant
 from app.models.menu import MenuItem
 from app.models.order import Order, OrderItem, OrderStatusHistory, Payment
+from app.models.smart import OrderIntelligence
 from app.models.cart import CartItem
+from app.models.user import CustomerPreference
 from app.models.enums import OrderStatus, PaymentMethod, PaymentStatus, UserRole
 from app.models.common import utc_now, utc_isoformat
 from app.schemas.order import OrderCreate, OrderStatusUpdate
@@ -19,6 +21,7 @@ from app.services.geo_service import assign_nearest_available_partner, calculate
 from app.algorithms.smart_inventory import deduct_inventory_for_order
 from app.services.access_control import get_restaurant_scope
 from app.services.payment_service import verify_payment
+from app.algorithms.dietary_service import analyze_dish_dietary_safety, normalize_allergy_terms
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
@@ -72,6 +75,34 @@ async def create_order(
         })
 
     # Taxes & Discounts
+    # Safety guardian: declared allergens are evaluated against the actual
+    # ordered dishes on the server, not just the browser's menu badges.
+    preference = session.exec(
+        select(CustomerPreference).where(CustomerPreference.user_id == current_user.id)
+    ).first()
+    allergy_terms = normalize_allergy_terms(preference.allergy_info if preference else None)
+    dietary_preference = preference.dietary_preference if preference else "Any"
+    blocked_items = []
+    customization_notes = []
+    if allergy_terms or dietary_preference.casefold() not in {"", "any", "none"}:
+        for item_data in order_items_to_create:
+            menu_item = session.get(MenuItem, item_data["menu_item_id"])
+            safety = analyze_dish_dietary_safety(menu_item, dietary_preference, allergy_terms)
+            if safety["status"] == "unsuitable":
+                blocked_items.append(f"{menu_item.name}: {safety['reason']}")
+            elif safety["status"] == "customizable":
+                customization_notes.append(f"{menu_item.name}: {safety['customization_note']}")
+    if blocked_items:
+        raise HTTPException(
+            status_code=409,
+            detail="Safety check blocked this order: " + "; ".join(blocked_items),
+        )
+    if customization_notes and not order_in.allergy_acknowledged:
+        raise HTTPException(
+            status_code=409,
+            detail="Allergy acknowledgement is required: " + "; ".join(customization_notes),
+        )
+
     tax = round(subtotal * 0.05, 2)
     delivery_fee = 30.0
 
@@ -208,6 +239,24 @@ async def create_order(
     points_earned = int(total_amount // 20)
     current_user.loyalty_points += points_earned
     session.add(current_user)
+
+    # Persist the first transparent quality and delay estimate with the order.
+    # The Smart Intelligence endpoints refresh it as the kitchen state changes.
+    active_queue_size = len(session.exec(
+        select(Order).where(
+            Order.restaurant_id == restaurant.id,
+            col(Order.status).in_([OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY]),
+        )
+    ).all())
+    session.add(OrderIntelligence(
+        order_id=new_order.id,
+        delay_risk=min(100, active_queue_size * 9),
+        quality_risk=min(100, int(eta_mins * 1.1) + max(0, len(created_items) - 3) * 4),
+        predicted_delay_minutes=max(0, active_queue_size - 4),
+        carbon_kg=round(0.18 + distance_km * 0.11 + len(created_items) * 0.04, 2),
+        safety_summary=("; ".join(customization_notes) if customization_notes else "No declared dietary or allergy conflict found"),
+        recommended_action="Monitor kitchen queue",
+    ))
 
     session.commit()
     session.refresh(new_order)

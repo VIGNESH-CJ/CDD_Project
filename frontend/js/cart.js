@@ -332,13 +332,27 @@ const Cart = {
         quantity: i.quantity
       }));
 
+      const safety = await API.getCheckoutSafety({
+        restaurant_id: restaurantId || cart.restaurant_id,
+        items: itemsPayload
+      });
+      if (!safety.safe_to_continue) {
+        Auth.showToast(`Order blocked for safety: ${safety.blocked_items.map(item => item.name).join(", ")}`, "danger");
+        return;
+      }
+      const allergyAcknowledged = !safety.requires_acknowledgement || window.confirm(
+        `${safety.acknowledgements.map(item => `${item.name}: ${item.instruction}`).join("\n")}\n\nConfirm that the kitchen instructions should be added?`
+      );
+      if (!allergyAcknowledged) return;
+
       const payload = {
         restaurant_id: restaurantId || cart.restaurant_id || 1,
         items: itemsPayload,
         delivery_address: address,
         coupon_code: this.activeCoupon ? this.activeCoupon.coupon_code : null,
         payment_method: paymentMethod,
-        customer_notes: notes
+        customer_notes: notes,
+        allergy_acknowledged: allergyAcknowledged
       };
 
       if (paymentMethod !== "cod") {
