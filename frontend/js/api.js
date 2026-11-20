@@ -228,6 +228,18 @@ const API = {
     return this.request(`/api/admin/analytics/bestsellers${q}`);
   },
 
+  async getSalesPerformance(restaurantId = null) {
+    const q = restaurantId ? `?restaurant_id=${restaurantId}` : "";
+    return this.request(`/api/admin/analytics/sales-performance${q}`);
+  },
+
+  async createPaymentCheckout(amount) {
+    return this.request("/api/payments/checkout", {
+      method: "POST",
+      body: JSON.stringify({ amount })
+    });
+  },
+
   async getAdminOrders(restaurantId = null, statusFilter = "all") {
     let q = `?status_filter=${statusFilter}`;
     if (restaurantId) q += `&restaurant_id=${restaurantId}`;
@@ -239,9 +251,26 @@ const API = {
     return this.request(`/api/admin/inventory${q}`);
   },
 
+  async createIngredient(payload) {
+    return this.request("/api/admin/inventory", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
   async restockIngredient(ingredientId, quantity) {
     return this.request(`/api/admin/inventory/restock?ingredient_id=${ingredientId}&quantity_to_add=${quantity}`, {
       method: "POST"
+    });
+  },
+  async logFoodWaste(ingredientId, quantity, reason) {
+    return this.request("/api/admin/waste/log", {
+      method: "POST",
+      body: JSON.stringify({
+        ingredient_id: ingredientId,
+        quantity_wasted: quantity,
+        reason
+      })
     });
   },
 

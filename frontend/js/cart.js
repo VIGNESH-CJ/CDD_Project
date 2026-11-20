@@ -341,6 +341,18 @@ const Cart = {
         customer_notes: notes
       };
 
+      if (paymentMethod !== "cod") {
+        const checkout = await API.createPaymentCheckout(
+          Math.max(0, Number(cart.subtotal) + Number(cart.delivery_fee || 30) + Number(cart.tax || 0))
+        );
+        if (checkout.checkout_url) {
+          localStorage.setItem("aifoodie_pending_order", JSON.stringify(payload));
+          window.location.assign(checkout.checkout_url);
+          return;
+        }
+        payload.payment_reference = checkout.reference;
+      }
+
       Auth.showToast("Placing your order...", "info");
       const orderResp = await API.createOrder(payload);
 
@@ -361,6 +373,27 @@ const Cart = {
 document.addEventListener("DOMContentLoaded", () => {
   Cart.updateBadge();
   if (document.getElementById("cartItemsList")) Cart.renderCartPage();
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("payment") === "success") {
+    const sessionId = params.get("session_id");
+    const pending = localStorage.getItem("aifoodie_pending_order");
+    if (!sessionId || !pending) return;
+    try {
+      const payload = JSON.parse(pending);
+      payload.payment_reference = sessionId;
+      Auth.showToast("Payment confirmed. Placing your order...", "info");
+      API.createOrder(payload).then(orderResp => {
+        localStorage.removeItem("aifoodie_pending_order");
+        Cart.activeCoupon = null;
+        Cart.updateBadge();
+        window.location.href = `/pages/order-tracking.html?order_id=${orderResp.order_id}`;
+      }).catch(err => {
+        Auth.showToast(err.message || "Payment succeeded but order creation failed", "danger");
+      });
+    } catch (error) {
+      Auth.showToast("Could not restore the pending order", "danger");
+    }
+  }
 });
 
 document.addEventListener("click", event => {

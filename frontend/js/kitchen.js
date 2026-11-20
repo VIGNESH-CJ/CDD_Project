@@ -37,7 +37,7 @@ const KitchenDisplay = {
     const now = new Date();
     clock.dateTime = now.toISOString();
     clock.textContent = new Intl.DateTimeFormat(undefined, {
-      weekday: "short", hour: "2-digit", minute: "2-digit"
+      dateStyle: "medium", timeStyle: "short"
     }).format(now);
   },
 
@@ -110,6 +110,7 @@ const KitchenDisplay = {
           <span class="kds-priority">${completed ? "Completed" : `${UI.escapeHtml(order.urgency || "Normal")} priority`}</span>
           <span class="kds-elapsed" data-minutes="${Math.max(0, Math.floor(Number(order.elapsed_minutes) || 0))}">${completed ? "" : `${Math.max(0, Math.floor(Number(order.elapsed_minutes) || 0))} min waiting`}</span>
         </div>
+        <div class="small text-muted mb-2">Placed ${UI.escapeHtml(UI.formatDateTime(order.created_at))}</div>
         <ul class="kds-order-items">${itemRows}</ul>
         ${order.customer_notes ? `<p class="kds-order-note"><i class="bi bi-chat-left-text" aria-hidden="true"></i><span>${UI.escapeHtml(order.customer_notes)}</span></p>` : ""}
         ${action ? `<button class="kds-action" type="button" data-kds-action="${action[0]}" data-order-id="${id}"><i class="bi ${action[2]}" aria-hidden="true"></i>${action[1]}</button>` : ""}

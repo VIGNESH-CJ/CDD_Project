@@ -54,6 +54,3 @@ Thumbs.db
 # Docker
 *.log
 docker-volumes/
-
-# Local database archive
-database.zip

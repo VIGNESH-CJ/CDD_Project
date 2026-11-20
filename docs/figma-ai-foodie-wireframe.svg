@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024">
+  <rect width="1440" height="1024" fill="#F5F7FA"/>
+  <rect width="1440" height="72" fill="#FFFFFF"/>
+  <rect x="24" y="20" width="160" height="32" rx="16" fill="#FF6B00"/>
+  <text x="104" y="42" text-anchor="middle" font-family="Arial" font-size="18" font-weight="700" fill="#FFFFFF">AI FOODIE</text>
+  <rect x="0" y="72" width="250" height="952" fill="#172033"/>
+  <g fill="#FFFFFF" font-family="Arial" font-size="16">
+    <text x="32" y="124">Overview</text>
+    <text x="32" y="164">Orders</text>
+    <text x="32" y="204">Menu</text>
+    <text x="32" y="244">Inventory</text>
+    <text x="32" y="284">Analytics</text>
+    <text x="32" y="324">AI Demand</text>
+  </g>
+  <text x="292" y="112" font-family="Arial" font-size="28" font-weight="700" fill="#172033">Restaurant Analytics</text>
+  <g>
+    <rect x="292" y="144" width="260" height="140" rx="16" fill="#FFFFFF"/>
+    <rect x="568" y="144" width="260" height="140" rx="16" fill="#FFFFFF"/>
+    <rect x="844" y="144" width="260" height="140" rx="16" fill="#FFFFFF"/>
+    <rect x="1120" y="144" width="260" height="140" rx="16" fill="#FFFFFF"/>
+    <g font-family="Arial" fill="#64748B">
+      <text x="316" y="174">TOTAL ORDERS</text><text x="592" y="174">REVENUE</text>
+      <text x="868" y="174">ACTIVE ORDERS</text><text x="1144" y="174">LOW STOCK</text>
+    </g>
+  </g>
+  <rect x="292" y="312" width="540" height="300" rx="16" fill="#FFFFFF"/>
+  <rect x="848" y="312" width="532" height="300" rx="16" fill="#FFFFFF"/>
+  <text x="316" y="348" font-family="Arial" font-size="18" font-weight="700" fill="#172033">Revenue</text>
+  <text x="872" y="348" font-family="Arial" font-size="18" font-weight="700" fill="#172033">Peak Ordering Hours</text>
+  <polyline points="316,544 384,520 452,536 520,458 588,478 656,406 724,438" fill="none" stroke="#FF6B00" stroke-width="6"/>
+  <rect x="292" y="628" width="1088" height="330" rx="16" fill="#FFFFFF"/>
+  <text x="316" y="664" font-family="Arial" font-size="18" font-weight="700" fill="#172033">Dish Sales Performance</text>
+  <g font-family="Arial" font-size="15" fill="#64748B">
+    <text x="316" y="710">BEST / LEAST</text><text x="560" y="710">DISH</text><text x="890" y="710">ORDERS</text><text x="1080" y="710">REVENUE</text>
+  </g>
+  <line x1="316" y1="724" x2="1356" y2="724" stroke="#E2E8F0"/>
+  <rect x="316" y="748" width="120" height="30" rx="15" fill="#DCFCE7"/><text x="376" y="768" text-anchor="middle" font-family="Arial" font-size="13" fill="#15803D">Best-selling</text>
+  <text x="560" y="768" font-family="Arial" font-size="15" fill="#172033">Masala Dosa</text>
+  <rect x="316" y="804" width="120" height="30" rx="15" fill="#FEE2E2"/><text x="376" y="824" text-anchor="middle" font-family="Arial" font-size="13" fill="#B91C1C">Least-selling</text>
+  <text x="560" y="824" font-family="Arial" font-size="15" fill="#172033">Featured Dish</text>
+</svg>

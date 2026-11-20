@@ -5,7 +5,7 @@ from app.models.menu import MenuItem, RecipeItem
 from app.models.inventory import Ingredient, InventoryTransaction
 from app.models.waste import FoodWasteRecord
 from app.models.enums import InventoryAction
-from app.models.common import utc_now
+from app.models.common import utc_now, utc_isoformat
 
 def deduct_inventory_for_order(
     session: Session,
@@ -92,10 +92,25 @@ def get_inventory_and_waste_analysis(
 
     low_stock_items = []
     expiry_warning_items = []
+    inventory_items = []
     total_inventory_value = 0.0
 
     for ing in ingredients:
         total_inventory_value += ing.current_stock * ing.cost_per_unit
+        days_remaining = (ing.expiry_date - today).days if ing.expiry_date else None
+        inventory_items.append({
+            "id": ing.id,
+            "name": ing.name,
+            "category": ing.category,
+            "current_stock": ing.current_stock,
+            "reorder_level": ing.reorder_level,
+            "unit": ing.unit,
+            "cost_per_unit": ing.cost_per_unit,
+            "expiry_date": str(ing.expiry_date) if ing.expiry_date else None,
+            "days_remaining": days_remaining,
+            "is_expired": days_remaining is not None and days_remaining < 0,
+            "is_low_stock": ing.current_stock <= ing.reorder_level,
+        })
         
         if ing.current_stock <= ing.reorder_level:
             low_stock_items.append({
@@ -105,11 +120,12 @@ def get_inventory_and_waste_analysis(
                 "reorder_level": ing.reorder_level,
                 "unit": ing.unit,
                 "urgency": "CRITICAL" if ing.current_stock <= (ing.reorder_level * 0.5) else "WARNING",
-                "recommended_order": round((ing.reorder_level * 2.5) - ing.current_stock, 1)
+                "recommended_order": round((ing.reorder_level * 2.5) - ing.current_stock, 1),
+                "is_expired": days_remaining is not None and days_remaining < 0,
             })
 
-        if ing.expiry_date:
-            days_left = (ing.expiry_date - today).days
+        if days_remaining is not None:
+            days_left = days_remaining
             if days_left <= 3:
                 risk_amount = round(ing.current_stock * ing.cost_per_unit, 2)
                 expiry_warning_items.append({
@@ -120,6 +136,7 @@ def get_inventory_and_waste_analysis(
                     "expiry_date": str(ing.expiry_date),
                     "days_remaining": days_left,
                     "financial_risk": f"₹{risk_amount:.2f}",
+                    "financial_risk_amount": risk_amount,
                     "ai_prevention_action": (
                         f"Suggest featuring dishes using {ing.name} in Today's Special Offers or Chef Specials."
                     )
@@ -136,6 +153,7 @@ def get_inventory_and_waste_analysis(
     return {
         "total_ingredients_monitored": len(ingredients),
         "total_inventory_value": round(total_inventory_value, 2),
+        "inventory_items": inventory_items,
         "low_stock_alerts_count": len(low_stock_items),
         "low_stock_alerts": low_stock_items,
         "expiry_warnings_count": len(expiry_warning_items),
@@ -149,7 +167,7 @@ def get_inventory_and_waste_analysis(
                 "quantity": f"{w.quantity_wasted} {w.unit}",
                 "reason": w.reason,
                 "loss": f"₹{w.estimated_loss_amount:.2f}",
-                "date": w.recorded_at.strftime("%Y-%m-%d")
+                "date": utc_isoformat(w.recorded_at)
             }
             for w in waste_records[-8:]
         ]

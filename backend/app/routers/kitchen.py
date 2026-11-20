@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.models.restaurant import Restaurant
 from app.models.enums import OrderStatus, UserRole
-from app.models.common import utc_now
+from app.models.common import utc_now, utc_isoformat
 from app.services.auth_service import require_role
 from app.websocket.manager import manager
 from app.algorithms.kitchen_priority import sort_kitchen_queue
@@ -83,7 +83,7 @@ def get_kitchen_queue(
                 }
                 for item in items
             ],
-            "created_at": o.created_at.strftime("%I:%M %p")
+            "created_at": utc_isoformat(o.created_at)
         })
 
     return formatted_queue

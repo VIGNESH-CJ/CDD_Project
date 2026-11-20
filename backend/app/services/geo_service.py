@@ -37,14 +37,13 @@ def calculate_eta_minutes(distance_km: float, remaining_prep_minutes: int) -> in
 
 
 def assign_nearest_available_partner(session: Session, order: Order, restaurant_lat: float, restaurant_lon: float) -> Optional[User]:
-    """Assign the closest available rider with no active order, or fallback to the least busy rider."""
+    """Assign the closest available rider with no active (non-terminal) order."""
     if order.id is None:
         return None
     profiles = session.exec(select(DeliveryProfile).where(col(DeliveryProfile.is_available).is_(True))).all()
     candidates: list[tuple[float, float, int, User]] = []
+    available_users: list[User] = []
     active_statuses = [OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.OUT_FOR_DELIVERY]
-    
-    # 1. Look for available riders who are completely free (0 active orders)
     for profile in profiles:
         active = session.exec(select(Order).where(
             Order.delivery_partner_id == profile.user_id,
@@ -55,26 +54,15 @@ def assign_nearest_available_partner(session: Session, order: Order, restaurant_
         if active is None and user is not None and user.id is not None and user.is_active and user.role == UserRole.DELIVERY_PARTNER:
             distance = haversine_distance_km(restaurant_lat, restaurant_lon, profile.current_latitude, profile.current_longitude)
             candidates.append((distance, -profile.rating, user.id, user))
+        if user is not None and user.id is not None and user.is_active and user.role == UserRole.DELIVERY_PARTNER:
+            available_users.append(user)
+
     if candidates:
         return min(candidates, key=lambda candidate: candidate[:3])[3]
 
-    # 2. Fallback: if all riders have an ongoing trip, assign to the online rider with the fewest active orders
-    least_busy_candidates: list[tuple[int, float, float, int, User]] = []
-    for profile in profiles:
-        user = session.get(User, profile.user_id)
-        if user is not None and user.id is not None and user.is_active and user.role == UserRole.DELIVERY_PARTNER:
-            active_count = len(session.exec(select(Order).where(
-                Order.delivery_partner_id == profile.user_id,
-                col(Order.status).in_(active_statuses),
-                Order.id != order.id,
-            )).all())
-            distance = haversine_distance_km(restaurant_lat, restaurant_lon, profile.current_latitude, profile.current_longitude)
-            least_busy_candidates.append((active_count, distance, -profile.rating, user.id, user))
-    if least_busy_candidates:
-        return min(least_busy_candidates, key=lambda candidate: candidate[:4])[4]
-
-    # 3. Final fallback: any registered and active delivery partner in the system
-    fallback_user = session.exec(
-        select(User).where(User.role == UserRole.DELIVERY_PARTNER, User.is_active == True)
-    ).first()
-    return fallback_user
+    # Small deployments and demos can have only one delivery partner. If that
+    # partner is online, keep handing work to them rather than rejecting a
+    # ready order merely because they are finishing another active delivery.
+    if len(available_users) == 1:
+        return available_users[0]
+    return None

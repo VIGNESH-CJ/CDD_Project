@@ -44,6 +44,69 @@ def test_assigns_nearest_available_partner_with_no_active_orders(session):
     assert partner is not None and partner.id == near.id
 
 
+def test_single_available_partner_handles_an_additional_ready_order(session):
+    restaurant = Restaurant(
+        name="Small Kitchen",
+        description="Test",
+        address="Bengaluru",
+        image_url="https://example.test/r.png",
+        latitude=12.97,
+        longitude=77.59,
+    )
+    rider = User(
+        email="only-rider@test.local",
+        hashed_password="x",
+        full_name="Only Rider",
+        role=UserRole.DELIVERY_PARTNER,
+    )
+    customer = User(
+        email="handoff-customer@test.local",
+        hashed_password="x",
+        full_name="Customer",
+        role=UserRole.CUSTOMER,
+    )
+    session.add_all([restaurant, rider, customer])
+    session.commit()
+    for row in (restaurant, rider, customer):
+        session.refresh(row)
+
+    session.add(
+        DeliveryProfile(
+            user_id=rider.id,
+            current_latitude=12.971,
+            current_longitude=77.591,
+            is_available=True,
+        )
+    )
+    first_order = Order(
+        order_number="ORD-FIRST",
+        customer_id=customer.id,
+        restaurant_id=restaurant.id,
+        delivery_partner_id=rider.id,
+        status=OrderStatus.OUT_FOR_DELIVERY,
+        delivery_address="Bengaluru",
+    )
+    second_order = Order(
+        order_number="ORD-SECOND",
+        customer_id=customer.id,
+        restaurant_id=restaurant.id,
+        status=OrderStatus.READY,
+        delivery_address="Bengaluru",
+    )
+    session.add_all([first_order, second_order])
+    session.commit()
+    session.refresh(second_order)
+
+    partner = assign_nearest_available_partner(
+        session,
+        second_order,
+        restaurant.latitude,
+        restaurant.longitude,
+    )
+    assert partner is not None
+    assert partner.id == rider.id
+
+
 def test_recommendations_filter_allergies_and_dietary_preference(client, session):
     from app.models.category import Category
     from app.models.menu import MenuItem

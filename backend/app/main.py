@@ -26,7 +26,8 @@ from app.routers import (
     kitchen,
     delivery,
     superadmin,
-    ai
+    ai,
+    payments
 )
 
 def on_startup():
@@ -92,6 +93,7 @@ app.include_router(kitchen.router)
 app.include_router(delivery.router)
 app.include_router(superadmin.router)
 app.include_router(ai.router)
+app.include_router(payments.router)
 
 # WebSocket Endpoint for Live Real-Time Events
 @app.websocket("/ws/orders")

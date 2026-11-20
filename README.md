@@ -66,6 +66,15 @@ python -m pytest backend/tests -q
 ```
 
 The tests use a temporary in-memory SQLite database and do not replace the demo database.
+
+## Payment providers
+
+Online checkout is secure-provider ready and supports two modes:
+
+- `PAYMENT_PROVIDER=sandbox` (default) creates a demo payment reference and does not charge real money.
+- `PAYMENT_PROVIDER=stripe` creates a real Stripe Checkout session and verifies payment before confirming an order.
+
+For Stripe test mode, set `STRIPE_SECRET_KEY` in `.env`. Never expose the secret key in frontend JavaScript.
 # Delivery, deployment, and design additions
 
 The live tracking implementation lives under the existing `backend/app` package. `PATCH /api/orders/{order_id}/status` assigns a nearest eligible delivery partner when an order becomes confirmed; accepting an order from the kitchen dashboard also attempts this assignment. Kitchen endpoints require an authenticated kitchen staff, restaurant admin, or super admin account, and restaurant admins are limited to their own restaurants. Kitchen actions must follow the order workflow, and handoff to delivery is rejected until a rider is assigned. Staff can also explicitly dispatch a confirmed order with `POST /api/delivery/orders/{order_id}/assign`. The authenticated ETA endpoint is `GET /api/delivery/orders/{order_id}/eta`; tracking metadata is `GET /api/delivery/orders/{order_id}/location`. Riders publish `{ "lat": 12.97, "lon": 77.59 }` to `/ws/delivery/{order_id}?token=<JWT>`, and customers connected to the same order receive location events.

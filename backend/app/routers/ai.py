@@ -97,6 +97,7 @@ def get_smart_inventory(
     return {
         "total_ingredients_monitored": sum(report["total_ingredients_monitored"] for report in reports),
         "total_inventory_value": round(sum(report["total_inventory_value"] for report in reports), 2),
+        "inventory_items": [item for report in reports for item in report.get("inventory_items", [])],
         "low_stock_alerts_count": sum(report["low_stock_alerts_count"] for report in reports),
         "low_stock_alerts": [item for report in reports for item in report["low_stock_alerts"]],
         "expiry_warnings_count": sum(report["expiry_warnings_count"] for report in reports),

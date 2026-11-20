@@ -1,6 +1,4 @@
 import uuid
-from datetime import datetime
-from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, col
 
@@ -11,7 +9,7 @@ from app.models.menu import MenuItem
 from app.models.order import Order, OrderItem, OrderStatusHistory, Payment
 from app.models.cart import CartItem
 from app.models.enums import OrderStatus, PaymentMethod, PaymentStatus, UserRole
-from app.models.common import utc_now
+from app.models.common import utc_now, utc_isoformat
 from app.schemas.order import OrderCreate, OrderStatusUpdate
 from app.services.auth_service import get_current_user, require_role
 from app.websocket.manager import manager
@@ -20,6 +18,7 @@ from app.algorithms.delivery_dispatch import haversine_distance_km
 from app.services.geo_service import assign_nearest_available_partner, calculate_eta_minutes
 from app.algorithms.smart_inventory import deduct_inventory_for_order
 from app.services.access_control import get_restaurant_scope
+from app.services.payment_service import verify_payment
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
@@ -102,8 +101,13 @@ async def create_order(
         payment_status = PaymentStatus.PENDING
         transaction_id = f"COD-{uuid.uuid4().hex[:8].upper()}"
     else:
+        if not verify_payment(order_in.payment_reference):
+            raise HTTPException(
+                status_code=402,
+                detail="Online payment has not been confirmed. Complete the checkout and retry.",
+            )
         payment_status = PaymentStatus.SUCCESS
-        transaction_id = f"PAY-{uuid.uuid4().hex[:10].upper()}"
+        transaction_id = order_in.payment_reference
 
     # 2. Assign Delivery Partner and calculate ETA
     assigned_driver_id = None
@@ -117,7 +121,7 @@ async def create_order(
     eta_mins = calculate_eta_minutes(distance_km, max_prep_time)
 
     # 3. Create Order
-    order_num = f"ORD-2026-{uuid.uuid4().hex[:6].upper()}"
+    order_num = f"ORD-{utc_now().year}-{uuid.uuid4().hex[:6].upper()}"
     new_order = Order(
         order_number=order_num,
         customer_id=current_user.id,
@@ -179,7 +183,11 @@ async def create_order(
         amount=total_amount,
         status=payment_status,
         transaction_ref=transaction_id,
-        gateway_response="Sandbox Verified Success" if payment_status == PaymentStatus.SUCCESS else "Awaiting COD Collection",
+        gateway_response=(
+            "Verified payment reference"
+            if payment_status == PaymentStatus.SUCCESS
+            else "Awaiting COD Collection"
+        ),
         created_at=utc_now()
     )
     session.add(payment)
@@ -255,7 +263,7 @@ def get_my_orders(
             "restaurant_image": rest.image_url if rest else "",
             "status": o.status.value,
             "total_amount": o.total_amount,
-            "created_at": o.created_at.strftime("%b %d, %Y - %I:%M %p"),
+            "created_at": utc_isoformat(o.created_at),
             "items_count": len(items),
             "items_summary": ", ".join(f"{i.quantity}x {i.item_name}" for i in items[:3]),
             "delivery_address": o.delivery_address

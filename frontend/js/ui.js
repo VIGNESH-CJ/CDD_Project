@@ -19,6 +19,16 @@ const UI = {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(value) || 0);
   },
 
+  formatDateTime(value, options = {}) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Date and time unavailable";
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+      ...options
+    }).format(date);
+  },
+
   setLoading(container, message = "Loading…") {
     if (!container) return;
     container.setAttribute("aria-busy", "true");
@@ -41,3 +51,17 @@ const UI = {
     container?.removeAttribute("aria-busy");
   }
 };
+
+function updateLiveTimes() {
+  const now = new Date();
+  document.querySelectorAll("[data-live-clock]").forEach(element => {
+    element.dateTime = now.toISOString();
+    element.textContent = UI.formatDateTime(now);
+  });
+  document.querySelectorAll("[data-current-year]").forEach(element => {
+    element.textContent = String(now.getFullYear());
+  });
+}
+
+updateLiveTimes();
+window.setInterval(updateLiveTimes, 1000);

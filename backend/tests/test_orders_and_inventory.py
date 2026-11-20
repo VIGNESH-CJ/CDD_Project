@@ -1,12 +1,26 @@
+from datetime import date, datetime, timedelta, timezone
+
 from app.models.restaurant import Restaurant
 from app.models.category import Category
 from app.models.menu import MenuItem, RecipeItem
-from app.models.inventory import Ingredient
+from app.models.inventory import Ingredient, InventoryTransaction
 from app.models.user import User
 from app.models.delivery import DeliveryProfile
-from app.models.order import Order
+from app.models.order import Order, OrderItem
+from app.models.waste import FoodWasteRecord
 from app.models.enums import UserRole, OrderStatus
+from app.models.common import utc_isoformat
 from app.algorithms.kitchen_priority import calculate_kitchen_priority_score
+from app.services.auth_service import create_access_token
+from sqlmodel import select
+
+
+def test_utc_isoformat_marks_database_naive_timestamps_as_utc():
+    value = datetime(2026, 11, 19, 12, 30)
+    assert utc_isoformat(value) == "2026-11-19T12:30:00+00:00"
+    aware = datetime(2026, 11, 19, 12, 30, tzinfo=timezone.utc)
+    assert utc_isoformat(aware) == "2026-11-19T12:30:00+00:00"
+
 
 def test_order_placement_inventory_deduction_and_priority(client, session, auth_headers, kitchen_headers, delivery_headers):
     # Setup database
@@ -72,6 +86,7 @@ def test_order_placement_inventory_deduction_and_priority(client, session, auth_
     assert order_res.status_code == 201
     order_data = order_res.json()
     assert order_data["success"] is True
+    assert order_data["order_number"].startswith(f"ORD-{datetime.now(timezone.utc).year}-")
     assert "order_id" in order_data
     assert len(order_data["inventory_alerts"]) > 0
     assert order_data["inventory_alerts"][0]["status"] == "LOW_STOCK"
@@ -90,6 +105,9 @@ def test_order_placement_inventory_deduction_and_priority(client, session, auth_
     assert len(queue) >= 1
     assert queue[0]["order_id"] == order_data["order_id"]
     assert "priority_score" in queue[0]
+    assert queue[0]["created_at"].endswith("+00:00")
+    my_orders = client.get("/api/orders/my-orders", headers=auth_headers).json()
+    assert my_orders[0]["created_at"].endswith("+00:00")
 
     # Test Kitchen Action: Accept -> Preparing -> Ready
     action_url = f"/api/kitchen/orders/{order_data['order_id']}/action"
@@ -134,6 +152,260 @@ def test_order_placement_inventory_deduction_and_priority(client, session, auth_
 
     invalid_repeat = client.post(f"{action_url}?action=accept", headers=kitchen_headers)
     assert invalid_repeat.status_code == 409
+
+
+def test_online_payment_requires_confirmed_checkout(client, session, auth_headers):
+    customer = session.exec(select(User).where(User.email == "customer@demo.com")).first()
+    if customer is None:
+        customer = User(email="customer@demo.com", hashed_password="pw", full_name="Customer", role=UserRole.CUSTOMER)
+        session.add(customer)
+        session.commit()
+
+    checkout = client.post(
+        "/api/payments/checkout",
+        json={"amount": 250},
+        headers=auth_headers,
+    )
+    assert checkout.status_code == 200
+    payment = checkout.json()
+    assert payment["provider"] == "sandbox"
+    assert payment["reference"].startswith("sandbox_")
+
+    restaurant = Restaurant(
+        name="Payment Kitchen",
+        description="Test",
+        address="Bengaluru",
+        image_url="https://example.test/kitchen.png",
+    )
+    session.add(restaurant)
+    session.commit()
+    session.refresh(restaurant)
+    category = Category(name="Meals", slug="payment-meals")
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    item = MenuItem(
+        restaurant_id=restaurant.id,
+        category_id=category.id,
+        name="Payment Thali",
+        description="Test meal",
+        image_url="https://example.test/thali.png",
+        price=250,
+    )
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+
+    unpaid_payload = {
+        "restaurant_id": restaurant.id,
+        "items": [{"menu_item_id": item.id, "quantity": 1}],
+        "delivery_address": "Bengaluru",
+        "payment_method": "online",
+        "payment_reference": "forged_reference",
+    }
+    unpaid = client.post("/api/orders", json=unpaid_payload, headers=auth_headers)
+    assert unpaid.status_code == 402
+
+    paid_payload = {**unpaid_payload, "payment_reference": payment["reference"]}
+    paid = client.post("/api/orders", json=paid_payload, headers=auth_headers)
+    assert paid.status_code == 201
+    assert paid.json()["success"] is True
+
+
+def test_food_waste_log_deducts_stock_and_records_loss(client, session):
+    admin = User(
+        email="waste-admin@test.local",
+        hashed_password="pw",
+        full_name="Waste Admin",
+        role=UserRole.RESTAURANT_ADMIN,
+    )
+    session.add(admin)
+    session.commit()
+    session.refresh(admin)
+
+    restaurant = Restaurant(
+        name="Waste Kitchen",
+        description="Test",
+        address="Bengaluru",
+        image_url="https://example.test/waste.png",
+        owner_id=admin.id,
+    )
+    session.add(restaurant)
+    session.commit()
+    session.refresh(restaurant)
+
+    ingredient = Ingredient(
+        restaurant_id=restaurant.id,
+        name="Paneer",
+        current_stock=10,
+        reorder_level=3,
+        cost_per_unit=25,
+        expiry_date=None,
+    )
+    session.add(ingredient)
+    session.commit()
+    session.refresh(ingredient)
+
+    token = create_access_token({"sub": admin.email, "role": UserRole.RESTAURANT_ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post(
+        "/api/admin/waste/log",
+        json={
+            "ingredient_id": ingredient.id,
+            "quantity_wasted": 2.5,
+            "reason": "Expired",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["remaining_stock"] == 7.5
+    assert data["estimated_loss_amount"] == 62.5
+
+    session.refresh(ingredient)
+    assert ingredient.current_stock == 7.5
+    record = session.exec(
+        select(FoodWasteRecord).where(FoodWasteRecord.ingredient_id == ingredient.id)
+    ).first()
+    assert record is not None
+    assert record.quantity_wasted == 2.5
+
+    inventory = client.get(
+        f"/api/admin/inventory?restaurant_id={restaurant.id}",
+        headers=headers,
+    )
+    assert inventory.status_code == 200
+    assert inventory.json()["waste_records_count"] >= 1
+    assert any(item["name"] == "Paneer" for item in inventory.json()["inventory_items"])
+
+
+def test_admin_can_add_ingredient_and_remove_expired_stock(client, session):
+    admin = User(
+        email="inventory-admin@test.local",
+        hashed_password="pw",
+        full_name="Inventory Admin",
+        role=UserRole.RESTAURANT_ADMIN,
+    )
+    session.add(admin)
+    session.commit()
+    session.refresh(admin)
+    restaurant = Restaurant(
+        name="Inventory Kitchen",
+        description="Test",
+        address="Bengaluru",
+        image_url="https://example.test/inventory.png",
+        owner_id=admin.id,
+    )
+    session.add(restaurant)
+    session.commit()
+    session.refresh(restaurant)
+    token = create_access_token({"sub": admin.email, "role": UserRole.RESTAURANT_ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    created = client.post(
+        "/api/admin/inventory",
+        headers=headers,
+        json={
+            "restaurant_id": restaurant.id,
+            "name": "Fresh Paneer",
+            "category": "Dairy",
+            "unit": "kg",
+            "current_stock": 4,
+            "reorder_level": 1,
+            "cost_per_unit": 30,
+            "expiry_date": (date.today() - timedelta(days=1)).isoformat(),
+        },
+    )
+    assert created.status_code == 201
+    ingredient_id = created.json()["id"]
+    assert session.exec(
+        select(InventoryTransaction).where(InventoryTransaction.ingredient_id == ingredient_id)
+    ).first() is not None
+
+    inventory = client.get(
+        f"/api/admin/inventory?restaurant_id={restaurant.id}",
+        headers=headers,
+    ).json()
+    expired_item = next(item for item in inventory["inventory_items"] if item["id"] == ingredient_id)
+    assert expired_item["is_expired"] is True
+    assert expired_item["days_remaining"] == -1
+
+    restocked = client.post(
+        f"/api/admin/inventory/restock?ingredient_id={ingredient_id}&quantity_to_add=2",
+        headers=headers,
+    )
+    assert restocked.status_code == 409
+
+    removed = client.post(
+        "/api/admin/waste/log",
+        headers=headers,
+        json={"ingredient_id": ingredient_id, "quantity_wasted": 4, "reason": "Expired"},
+    )
+    assert removed.status_code == 200
+    assert removed.json()["remaining_stock"] == 0
+    assert "do not serve expired" in removed.json()["prevention_recommendation"].lower()
+
+    outsider = User(
+        email="other-inventory-admin@test.local",
+        hashed_password="pw",
+        full_name="Other Admin",
+        role=UserRole.RESTAURANT_ADMIN,
+    )
+    session.add(outsider)
+    session.commit()
+    session.refresh(outsider)
+    outsider_token = create_access_token(
+        {"sub": outsider.email, "role": UserRole.RESTAURANT_ADMIN.value}
+    )
+    forbidden = client.post(
+        "/api/admin/inventory",
+        headers={"Authorization": f"Bearer {outsider_token}"},
+        json={
+            "restaurant_id": restaurant.id,
+            "name": "Unauthorized Ingredient",
+        },
+    )
+    assert forbidden.status_code == 403
+
+
+def test_sales_performance_reports_best_and_least_selling(client, session, admin_headers):
+    admin = User(email="analytics-admin@test.local", hashed_password="pw", full_name="Admin", role=UserRole.RESTAURANT_ADMIN)
+    customer = User(email="analytics-customer@test.local", hashed_password="pw", full_name="Customer", role=UserRole.CUSTOMER)
+    restaurant = Restaurant(name="Analytics Kitchen", description="Test", address="Bengaluru", image_url="https://example.test/r.png")
+    session.add_all([admin, customer, restaurant])
+    session.commit()
+    session.refresh(admin)
+    session.refresh(customer)
+    session.refresh(restaurant)
+    restaurant.owner_id = admin.id
+    category = Category(name="Analytics", slug="analytics")
+    session.add_all([restaurant, category])
+    session.commit()
+    session.refresh(category)
+    popular = MenuItem(restaurant_id=restaurant.id, category_id=category.id, name="Popular Dish", description="Test", image_url="https://example.test/p.png", price=100)
+    rare = MenuItem(restaurant_id=restaurant.id, category_id=category.id, name="Rare Dish", description="Test", image_url="https://example.test/r.png", price=100)
+    session.add_all([popular, rare])
+    session.commit()
+    session.refresh(popular)
+    session.refresh(rare)
+
+    order = Order(order_number="AN-001", customer_id=customer.id, restaurant_id=restaurant.id, status=OrderStatus.DELIVERED, delivery_address="Bengaluru")
+    session.add(order)
+    session.commit()
+    session.refresh(order)
+    session.add(OrderItem(order_id=order.id, menu_item_id=popular.id, item_name="Popular Dish", quantity=5, unit_price=100, total_price=500))
+    session.commit()
+
+    response = client.get(
+        f"/api/admin/analytics/sales-performance?restaurant_id={restaurant.id}",
+        headers={"Authorization": f"Bearer {create_access_token({'sub': admin.email})}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["best_selling"][0]["name"] == "Popular Dish"
+    assert data["best_selling"][0]["order_count"] == 5
+    assert {item["name"] for item in data["least_selling"]} >= {"Popular Dish", "Rare Dish"}
 
 
 def test_restaurant_admin_kitchen_access_is_limited_to_owned_restaurants(client, session, admin_headers):

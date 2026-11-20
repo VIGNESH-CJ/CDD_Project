@@ -13,6 +13,7 @@ class OrderCreate(BaseModel):
     delivery_address: str = Field(min_length=1, max_length=400)
     coupon_code: Optional[str] = None
     payment_method: PaymentMethod = PaymentMethod.COD
+    payment_reference: Optional[str] = Field(default=None, max_length=255)
     customer_notes: Optional[str] = None
     delivery_latitude: Optional[float] = Field(default=12.9716, ge=-90, le=90)
     delivery_longitude: Optional[float] = Field(default=77.5946, ge=-180, le=180)

@@ -11,8 +11,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="/css/style.css?v=20261118-visual-refresh">
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js (served locally for reliable dashboard rendering) -->
+  <script src="/js/chart.umd.min.js"></script>
 </head>
 
 <body class="bg-light">
@@ -30,6 +30,7 @@
       </div>
 
       <div class="d-flex align-items-center gap-3">
+        <time id="adminLiveClock" class="small text-muted d-none d-lg-inline" data-live-clock></time>
         <div class="d-none d-md-block text-end">
           <div class="fw-bold" id="adminUserName">Priya Nair (Admin)</div>
           <div class="small text-muted" id="adminRestaurantLabel">Select or add a restaurant</div>
@@ -317,6 +318,45 @@
           </button>
         </div>
 
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+          <h5 class="fw-bold mb-3"><i class="bi bi-plus-circle text-success me-2"></i>Add Ingredient</h5>
+          <form id="addIngredientForm" class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold" for="ingredientName">Name</label>
+              <input id="ingredientName" class="form-control" type="text" maxlength="120" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold" for="ingredientCategory">Category</label>
+              <input id="ingredientCategory" class="form-control" type="text" maxlength="60" value="Produce" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-bold" for="ingredientUnit">Unit</label>
+              <input id="ingredientUnit" class="form-control" type="text" maxlength="20" value="kg" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold" for="ingredientExpiry">Expiry date</label>
+              <input id="ingredientExpiry" class="form-control" type="date">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold" for="ingredientStock">Starting stock</label>
+              <input id="ingredientStock" class="form-control" type="number" min="0" step="0.01" value="0" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold" for="ingredientReorderLevel">Reorder level</label>
+              <input id="ingredientReorderLevel" class="form-control" type="number" min="0" step="0.01" value="5" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-bold" for="ingredientCost">Cost per unit (₹)</label>
+              <input id="ingredientCost" class="form-control" type="number" min="0" step="0.01" value="0" required>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <button id="addIngredientButton" class="btn btn-success w-100" type="submit">
+                <i class="bi bi-plus-lg me-1"></i>Add Ingredient
+              </button>
+            </div>
+          </form>
+        </div>
+
         <div class="row g-4 mb-4">
           <!-- Low Stock Thresholds -->
           <div class="col-lg-6">
@@ -346,6 +386,45 @@
           <h5 class="fw-bold mb-3">All Monitored Ingredients</h5>
           <div id="inventoryTableContainer" class="table-responsive">
             <!-- Dynamic table -->
+          </div>
+        </div>
+
+        <div class="row g-4 mt-1">
+          <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+              <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-trash3 me-2"></i>Log Food Waste</h5>
+              <form id="wasteLogForm" class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small fw-bold" for="wasteIngredientId">Ingredient</label>
+                  <select id="wasteIngredientId" class="form-select" required>
+                    <option value="">Choose an ingredient</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold" for="wasteQuantity">Quantity</label>
+                  <input id="wasteQuantity" class="form-control" type="number" min="0.01" step="0.01" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold" for="wasteReason">Reason</label>
+                  <select id="wasteReason" class="form-select" required>
+                    <option value="Expired">Expired</option>
+                    <option value="Spoiled">Spoiled</option>
+                    <option value="Overproduction">Overproduction</option>
+                    <option value="Damage / Spillage">Damage / Spillage</option>
+                    <option value="Incorrect preparation">Incorrect preparation</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <button class="btn btn-danger w-100" type="submit"><i class="bi bi-trash me-1"></i>Record Waste</button>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+              <h5 class="fw-bold mb-3 text-success"><i class="bi bi-lightbulb me-2"></i>Waste Prevention Actions</h5>
+              <div id="wastePreventionList" class="d-flex flex-column gap-3"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -397,6 +476,20 @@
               <h5 class="fw-bold mb-3">Monthly Growth Trends</h5>
               <div class="chart-panel chart-panel-short">
                 <canvas id="monthlyGrowthChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4 mt-1">
+          <div class="col-lg-12">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+              <h5 class="fw-bold mb-3">Dish Sales Performance</h5>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead><tr><th>Performance</th><th>Dish</th><th>Orders</th><th>Revenue</th></tr></thead>
+                  <tbody id="salesPerformanceTable"><tr><td colspan="4" class="text-muted">Loading...</td></tr></tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -505,9 +598,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="/js/api.js"></script>
+  <script src="/js/api.js?v=20261119-inventory"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/websocket.js"></script>
+  <script src="/js/ui.js?v=20261119-datetime"></script>
 
   <script>
     let dailyChart = null;
@@ -516,15 +610,25 @@
     let monthlyChart = null;
     let selectedRestaurantId = null;
     let editingRestaurantId = null;
+    let currentInventoryItems = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
       // Guard: Restaurant Admin or Super Admin only
       if (!Auth.checkAuthGuard(["restaurant_admin", "super_admin"])) return;
 
       await loadManagedRestaurants();
-      if (selectedRestaurantId) refreshRestaurantData();
+      if (selectedRestaurantId) {
+        refreshRestaurantData();
+        const hashTab = window.location.hash.replace("#", "");
+        if (["restaurants", "overview", "orders", "menu", "inventory", "analytics", "demand"].includes(hashTab)) {
+          const link = document.querySelector(`.sidebar-link[href="#${hashTab}"]`);
+          if (link) switchTab(hashTab, link);
+        }
+      }
       else switchTab("restaurants", document.querySelector('[href="#restaurants"]'));
       document.getElementById("restaurantForm").addEventListener("submit", saveRestaurant);
+      document.getElementById("addIngredientForm").addEventListener("submit", addInventoryIngredient);
+      document.getElementById("wasteLogForm").addEventListener("submit", logFoodWaste);
 
       // Listen to real-time events
       WSClient.addListener((event) => {
@@ -660,6 +764,12 @@
       target.hidden = false;
       target.classList.add("active");
       el.classList.add("active");
+      window.requestAnimationFrame(() => {
+        if (tabId === "analytics") loadAnalyticsCharts();
+        if (tabId === "inventory") loadInventoryTab();
+        if (tabId === "demand") loadDemandForecast();
+        if (tabId === "overview") loadOverviewData();
+      });
     }
 
     async function loadOverviewData() {
@@ -722,7 +832,7 @@
 
         tbody.innerHTML = orders.map(o => `
           <tr>
-            <td><strong>#${o.order_number}</strong><div class="small text-muted">${o.created_at}</div></td>
+            <td><strong>#${o.order_number}</strong><div class="small text-muted">${UI.escapeHtml(UI.formatDateTime(o.created_at))}</div></td>
             <td>${o.customer_name}<div class="small text-muted">${o.customer_phone || ''}</div></td>
             <td><small>${o.items.map(i => `${i.quantity}x ${i.name}`).join('<br>')}</small></td>
             <td class="fw-bold brand-orange">₹${o.total_amount.toFixed(2)}</td>
@@ -816,6 +926,41 @@
       try {
         const inv = await API.getInventory(selectedRestaurantId);
 
+        const ingredients = Array.isArray(inv.inventory_items) ? inv.inventory_items : [];
+        currentInventoryItems = ingredients;
+        const wasteSelect = document.getElementById("wasteIngredientId");
+        wasteSelect.innerHTML = '<option value="">Choose an ingredient</option>' + ingredients.map(item =>
+          `<option value="${Number(item.id)}">${UI.escapeHtml(item.name)} · ${item.current_stock} ${UI.escapeHtml(item.unit)}</option>`
+        ).join("");
+
+        document.getElementById("inventoryTableContainer").innerHTML = ingredients.length
+          ? `<table class="table align-middle mb-0">
+              <thead><tr><th>Ingredient</th><th>Category</th><th>Stock</th><th>Reorder level</th><th>Expiry</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>${ingredients.map(item => `
+                <tr>
+                  <td class="fw-semibold">${UI.escapeHtml(item.name)}</td>
+                  <td>${UI.escapeHtml(item.category)}</td>
+                  <td>${item.current_stock} ${UI.escapeHtml(item.unit)}</td>
+                  <td>${item.reorder_level} ${UI.escapeHtml(item.unit)}</td>
+                  <td>${item.expiry_date ? UI.escapeHtml(item.expiry_date) : "Not set"}</td>
+                  <td><span class="badge ${item.is_expired ? "bg-dark" : item.is_low_stock ? "bg-danger" : "bg-success"}">${item.is_expired ? "Expired" : item.is_low_stock ? "Low stock" : "Healthy"}</span></td>
+                  <td>${item.is_expired && item.current_stock > 0 ? `<button class="btn btn-sm btn-outline-danger" type="button" onclick="removeExpiredStock(${Number(item.id)})">Remove expired stock</button>` : '<span class="text-muted small">-</span>'}</td>
+                </tr>`).join("")}
+              </tbody>
+            </table>`
+          : '<div class="text-muted small">No monitored ingredients are available for this restaurant.</div>';
+
+        const preventionContainer = document.getElementById("wastePreventionList");
+        const preventionItems = inv.expiry_warnings || [];
+        preventionContainer.innerHTML = preventionItems.length
+          ? preventionItems.map(item => `
+              <div class="p-3 border rounded-3 bg-success bg-opacity-10">
+                <strong class="d-block">${UI.escapeHtml(item.name)}</strong>
+                <div class="small text-muted">${item.days_remaining >= 0 ? `${item.days_remaining} days remaining` : "Past expiry date"}</div>
+                <div class="small mt-2"><i class="bi bi-lightbulb-fill text-success me-1"></i>${UI.escapeHtml(item.ai_prevention_action)}</div>
+              </div>`).join("")
+          : '<div class="text-success small"><i class="bi bi-check-circle me-1"></i>No urgent expiry risks detected.</div>';
+
         // Alerts List
         const alertsContainer = document.getElementById("inventoryAlertsList");
         const overviewAlerts = document.getElementById("overviewLowStockList");
@@ -826,12 +971,12 @@
           const html = inv.low_stock_alerts.map(a => `
             <div class="p-3 border rounded-3 bg-light d-flex justify-content-between align-items-center">
               <div>
-                <strong class="d-block">${a.name}</strong>
-                <span class="small text-danger fw-bold">Stock: ${a.current_stock} ${a.unit} (Reorder level: ${a.reorder_level} ${a.unit})</span>
+                <strong class="d-block">${UI.escapeHtml(a.name)}</strong>
+                <span class="small text-danger fw-bold">Stock: ${a.current_stock} ${UI.escapeHtml(a.unit)} (Reorder level: ${a.reorder_level} ${UI.escapeHtml(a.unit)})</span>
               </div>
-              <button class="btn btn-sm btn-outline-danger" onclick="restockItemPrompt(${a.id}, '${a.name}')">
-                Restock +${a.recommended_order} ${a.unit}
-              </button>
+              ${a.is_expired
+                ? '<span class="badge bg-dark">Expired - add a new batch</span>'
+                : `<button class="btn btn-sm btn-outline-danger" onclick="restockItemPrompt(${Number(a.id)})">Restock +${a.recommended_order} ${UI.escapeHtml(a.unit)}</button>`}
             </div>
           `).join('');
           alertsContainer.innerHTML = html;
@@ -861,12 +1006,17 @@
       }
     }
 
-    async function restockItemPrompt(id, name) {
-      const qty = prompt(`Enter quantity to add for ${name} (e.g. 10):`, "10");
+    async function restockItemPrompt(id) {
+      const ingredient = currentInventoryItems.find(item => Number(item.id) === Number(id));
+      if (!ingredient || ingredient.is_expired) {
+        Auth.showToast("Add a new batch instead of restocking an expired ingredient.", "warning");
+        return;
+      }
+      const qty = prompt(`Enter quantity to add for ${ingredient.name} (e.g. 10):`, "10");
       if (qty && !isNaN(qty)) {
         try {
           await API.restockIngredient(id, parseFloat(qty));
-          Auth.showToast(`Successfully restocked ${name}!`, "success");
+          Auth.showToast(`Successfully restocked ${ingredient.name}!`, "success");
           loadInventoryTab();
           loadOverviewData();
         } catch (err) {
@@ -875,11 +1025,122 @@
       }
     }
 
+    async function addInventoryIngredient(event) {
+      event.preventDefault();
+      if (!selectedRestaurantId) {
+        Auth.showToast("Choose a restaurant before adding ingredients.", "warning");
+        return;
+      }
+
+      const form = event.currentTarget;
+      const button = document.getElementById("addIngredientButton");
+      const payload = {
+        restaurant_id: selectedRestaurantId,
+        name: document.getElementById("ingredientName").value.trim(),
+        category: document.getElementById("ingredientCategory").value.trim(),
+        unit: document.getElementById("ingredientUnit").value.trim(),
+        current_stock: Number(document.getElementById("ingredientStock").value),
+        reorder_level: Number(document.getElementById("ingredientReorderLevel").value),
+        cost_per_unit: Number(document.getElementById("ingredientCost").value),
+        expiry_date: document.getElementById("ingredientExpiry").value || null,
+      };
+
+      button.disabled = true;
+      try {
+        await API.createIngredient(payload);
+        form.reset();
+        document.getElementById("ingredientCategory").value = "Produce";
+        document.getElementById("ingredientUnit").value = "kg";
+        document.getElementById("ingredientStock").value = "0";
+        document.getElementById("ingredientReorderLevel").value = "5";
+        document.getElementById("ingredientCost").value = "0";
+        Auth.showToast("Ingredient added to inventory.", "success");
+        await loadInventoryTab();
+        await loadOverviewData();
+      } catch (err) {
+        Auth.showToast(err.message || "Could not add the ingredient.", "danger");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function removeExpiredStock(ingredientId) {
+      const ingredient = currentInventoryItems.find(item => Number(item.id) === Number(ingredientId));
+      if (!ingredient || !ingredient.is_expired || ingredient.current_stock <= 0) {
+        Auth.showToast("This ingredient has no expired stock to remove.", "warning");
+        return;
+      }
+      const quantity = Number(ingredient.current_stock);
+      const confirmed = window.confirm(
+        `Record ${quantity} ${ingredient.unit} of ${ingredient.name} as expired and remove it from available stock?`
+      );
+      if (!confirmed) return;
+
+      try {
+        const result = await API.logFoodWaste(ingredient.id, quantity, "Expired");
+        Auth.showToast(
+          `${quantity} ${ingredient.unit} of ${ingredient.name} removed from stock. Loss: ₹${Number(result.estimated_loss_amount).toFixed(2)}.`,
+          "success"
+        );
+        await loadInventoryTab();
+        await loadOverviewData();
+      } catch (err) {
+        Auth.showToast(err.message || "Could not remove the expired stock.", "danger");
+      }
+    }
+
+    async function logFoodWaste(event) {
+      event.preventDefault();
+      const ingredientId = Number(document.getElementById("wasteIngredientId").value);
+      const quantity = parseFloat(document.getElementById("wasteQuantity").value);
+      const reason = document.getElementById("wasteReason").value;
+      if (!ingredientId || !Number.isFinite(quantity) || quantity <= 0) {
+        Auth.showToast("Choose an ingredient and enter a valid quantity.", "warning");
+        return;
+      }
+      try {
+        const result = await API.logFoodWaste(ingredientId, quantity, reason);
+        Auth.showToast(`Waste logged. Estimated loss: ₹${Number(result.estimated_loss_amount).toFixed(2)}`, "success");
+        document.getElementById("wasteLogForm").reset();
+        await loadInventoryTab();
+        await loadOverviewData();
+      } catch (err) {
+        Auth.showToast(err.message, "danger");
+      }
+    }
+
     async function loadAnalyticsCharts() {
       try {
+        if (typeof Chart === "undefined") {
+          ["dailyRevenueChart", "peakHoursChart", "bestsellersChart", "monthlyGrowthChart"].forEach(id => {
+            const canvas = document.getElementById(id);
+            if (canvas) {
+              canvas.style.display = "none";
+              const fallback = document.createElement("div");
+              fallback.className = "alert alert-warning mb-0";
+              fallback.textContent = "Chart library could not load. Refresh the page or check internet connectivity.";
+              canvas.parentElement.appendChild(fallback);
+            }
+          });
+          return;
+        }
         const rev = await API.getRevenueAnalytics(selectedRestaurantId);
         const peak = await API.getPeakHoursAnalytics(selectedRestaurantId);
         const best = await API.getBestsellersAnalytics(selectedRestaurantId);
+        const performance = await API.getSalesPerformance(selectedRestaurantId);
+        const rows = [
+          ...performance.best_selling.map(item => ({ ...item, level: "Best-selling", badge: "success" })),
+          ...performance.least_selling.map(item => ({ ...item, level: "Least-selling", badge: "danger" }))
+        ];
+        document.getElementById("salesPerformanceTable").innerHTML = rows.length
+          ? rows.map(item => `
+            <tr>
+              <td><span class="badge bg-${item.badge}-subtle text-${item.badge}">${item.level}</span></td>
+              <td class="fw-semibold">${UI.escapeHtml(item.name)}</td>
+              <td>${Number(item.order_count)}</td>
+              <td>${UI.currency(item.revenue)}</td>
+            </tr>`).join("")
+          : '<tr><td colspan="4" class="text-muted">No sales data available</td></tr>';
 
         // Daily Chart
         const ctxDaily = document.getElementById("dailyRevenueChart").getContext("2d");

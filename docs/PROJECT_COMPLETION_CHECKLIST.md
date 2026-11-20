@@ -14,11 +14,11 @@ This checklist distinguishes code present in the repository from work that requi
 
 - [ ] Run the local application and follow a real order from customer checkout through kitchen, pickup, and delivery tracking.
 - [x] Run `python -m pytest backend/tests -q` and fix any failing checks. The suite passed locally; rerun it in CI after pushing changes.
-- [ ] Create the high-fidelity screens and interactive prototype in Figma using `FIGMA_UI_UX_SPEC.md`. The repository currently contains the specification, not a Figma file or prototype.
+- [ ] Create the hosted high-fidelity Figma file and interactive prototype. Repository handoff assets now include `FIGMA_UI_UX_SPEC.md`, `FIGMA_IMPORT_GUIDE.md`, and a print-ready SVG wireframe.
 - [ ] Push the project to GitHub, create/protect `main` and `develop`, configure `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`, and confirm the workflow succeeds.
 - [ ] Build and run the Docker Compose stack on the target machine; confirm MySQL data persists after restarting containers.
 - [ ] If AWS deployment is part of the submission, configure Terraform variables, review the plan and cost, apply it, then deploy the application. Terraform currently creates infrastructure and installs Docker; it does not itself deploy this application's containers.
-- [ ] Integrate a real payment provider sandbox if required. Current order payment handling is demo behavior and must not be presented as a real payment integration.
+- [ ] Activate a real payment-provider test account. Stripe Checkout and server-side payment verification are implemented; set `STRIPE_SECRET_KEY` and switch `PAYMENT_PROVIDER=stripe` to test or use the default sandbox mode.
 - [ ] Add an LLM provider key only if LLM-generated replies are required; the assistant also has a local fallback.
 
 ## Suggested beginner run order
